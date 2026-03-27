@@ -1,11 +1,10 @@
-# 📖 LibraryMS — Library Book Management System
-**Group 4 Project | MSc Web Technologies**
+# LibraryMS — Library Book Management System
 
 A full-stack Library Management System built with **PHP REST API**, **AJAX**, and **JSON** data storage.
 
 ---
 
-## 🏗️ Project Structure
+## Project Structure
 
 ```
 library-system/
@@ -27,7 +26,7 @@ library-system/
 
 ---
 
-## 🚀 Setup Instructions
+## Setup Instructions
 
 ### Requirements
 - **PHP 8.0+** (with `php -S` built-in server, or XAMPP/WAMP/LAMP)
@@ -52,7 +51,7 @@ chmod 664 data/*.json
 
 ---
 
-## 🔌 REST API Endpoints
+## REST API Endpoints
 
 ### Books — `api/books.php`
 | Method | URL | Description |
@@ -109,7 +108,7 @@ chmod 664 data/*.json
 
 ---
 
-## ✨ Features
+## Features
 
 - **Full CRUD** for Books, Borrowers, and Loans
 - **AJAX-powered** — no page reloads; all data fetched dynamically
@@ -123,7 +122,7 @@ chmod 664 data/*.json
 
 ---
 
-## 🛠️ Technologies Used
+## Technologies Used
 
 | Layer | Technology |
 |-------|-----------|
@@ -135,7 +134,7 @@ chmod 664 data/*.json
 
 ---
 
-## 📚 Concepts Demonstrated
+## Concepts Demonstrated
 
 - **REST API design** — proper HTTP methods and status codes
 - **Asynchronous communication** — async/await AJAX calls
