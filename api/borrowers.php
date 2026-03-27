@@ -1,31 +1,36 @@
 <?php
-// api/borrowers.php - REST API for Borrowers CRUD
+// REST API for Borrowers CRUD using MySQL
 require_once 'config.php';
 
-$method    = $_SERVER['REQUEST_METHOD'];
-$borrowers = readData(BORROWERS_FILE);
-$id        = isset($_GET['id']) ? (int)$_GET['id'] : null;
+$method = $_SERVER['REQUEST_METHOD'];
+$id = isset($_GET['id']) ? (int)$_GET['id'] : null;
 
 // ── GET ──────────────────────────────────────────────────────────────────────
 if ($method === 'GET') {
     if ($id) {
-        $found = array_values(array_filter($borrowers, fn($b) => $b['id'] === $id));
-        $found ? respond($found[0]) : respond(['error' => 'Borrower not found'], 404);
+        $found = fetchOne("SELECT * FROM borrowers WHERE id = ?", [$id]);
+        $found ? respond($found) : respond(['error' => 'Borrower not found'], 404);
     }
 
     $search = strtolower($_GET['search'] ?? '');
     $status = $_GET['status'] ?? '';
 
-    $filtered = array_filter($borrowers, function ($b) use ($search, $status) {
-        if ($search && !str_contains(strtolower($b['name']), $search)
-                    && !str_contains(strtolower($b['email']), $search)) {
-            return false;
-        }
-        if ($status && $b['status'] !== $status) return false;
-        return true;
-    });
+    $where = ["1=1"];
+    $params = [];
 
-    respond(array_values($filtered));
+    if ($search) {
+        $where[] = "(LOWER(name) LIKE ? OR LOWER(email) LIKE ?)";
+        $params[] = "%$search%";
+        $params[] = "%$search%";
+    }
+    if ($status) {
+        $where[] = "status = ?";
+        $params[] = $status;
+    }
+
+    $sql = "SELECT * FROM borrowers WHERE " . implode(' AND ', $where);
+    $borrowers = fetchAllRows($sql, $params);
+    respond($borrowers);
 }
 
 // ── POST ─────────────────────────────────────────────────────────────────────
@@ -35,52 +40,80 @@ if ($method === 'POST') {
         respond(['error' => 'Name and email are required'], 400);
     }
     // Check duplicate email
-    foreach ($borrowers as $b) {
-        if (strtolower($b['email']) === strtolower(trim($body['email']))) {
-            respond(['error' => 'Email already registered'], 409);
-        }
+    $existing = fetchOne("SELECT id FROM borrowers WHERE LOWER(email) = ?", [strtolower(trim($body['email']))]);
+    if ($existing) {
+        respond(['error' => 'Email already registered'], 409);
     }
-    $new = [
-        'id'           => nextId($borrowers),
-        'name'         => trim($body['name']),
-        'email'        => trim($body['email']),
-        'phone'        => trim($body['phone'] ?? ''),
-        'memberSince'  => date('Y-m-d'),
-        'status'       => 'active',
-    ];
-    $borrowers[] = $new;
-    writeData(BORROWERS_FILE, $borrowers);
-    respond($new, 201);
+
+    $name = trim($body['name']);
+    $email = trim($body['email']);
+    $phone = trim($body['phone'] ?? '');
+    $since = date('Y-m-d');
+    $status = 'active';
+
+    try {
+        executeUpdate(
+            "INSERT INTO borrowers (name, email, phone, memberSince, status) VALUES (?, ?, ?, ?, ?)",
+        [$name, $email, $phone, $since, $status]
+        );
+        $newId = lastId();
+        respond(fetchOne("SELECT * FROM borrowers WHERE id = ?", [$newId]), 201);
+    }
+    catch (Exception $e) {
+        respond(['error' => 'Creation failed: ' . $e->getMessage()], 500);
+    }
 }
 
 // ── PUT ──────────────────────────────────────────────────────────────────────
 if ($method === 'PUT') {
-    if (!$id) respond(['error' => 'ID required'], 400);
-    $body  = getBody();
-    $found = false;
-    foreach ($borrowers as &$b) {
-        if ($b['id'] === $id) {
-            $b['name']   = trim($body['name']   ?? $b['name']);
-            $b['email']  = trim($body['email']  ?? $b['email']);
-            $b['phone']  = trim($body['phone']  ?? $b['phone']);
-            $b['status'] = trim($body['status'] ?? $b['status']);
-            $found   = true;
-            $updated = $b;
-            break;
-        }
+    if (!$id)
+        respond(['error' => 'ID required'], 400);
+    $body = getBody();
+
+    $borrower = fetchOne("SELECT * FROM borrowers WHERE id = ?", [$id]);
+    if (!$borrower)
+        respond(['error' => 'Borrower not found'], 404);
+
+    $name = trim($body['name'] ?? $borrower['name']);
+    $email = trim($body['email'] ?? $borrower['email']);
+    $phone = trim($body['phone'] ?? $borrower['phone']);
+    $status = trim($body['status'] ?? $borrower['status']);
+
+    try {
+        executeUpdate(
+            "UPDATE borrowers SET name = ?, email = ?, phone = ?, status = ? WHERE id = ?",
+        [$name, $email, $phone, $status, $id]
+        );
+        respond(fetchOne("SELECT * FROM borrowers WHERE id = ?", [$id]));
     }
-    if (!$found) respond(['error' => 'Borrower not found'], 404);
-    writeData(BORROWERS_FILE, $borrowers);
-    respond($updated);
+    catch (Exception $e) {
+        respond(['error' => 'Update failed: ' . $e->getMessage()], 500);
+    }
 }
 
 // ── DELETE ───────────────────────────────────────────────────────────────────
 if ($method === 'DELETE') {
-    if (!$id) respond(['error' => 'ID required'], 400);
-    $filtered = array_filter($borrowers, fn($b) => $b['id'] !== $id);
-    if (count($filtered) === count($borrowers)) respond(['error' => 'Borrower not found'], 404);
-    writeData(BORROWERS_FILE, $filtered);
-    respond(['message' => 'Borrower deleted']);
+    if (!$id)
+        respond(['error' => 'ID required'], 400);
+
+    $borrower = fetchOne("SELECT * FROM borrowers WHERE id = ?", [$id]);
+    if (!$borrower)
+        respond(['error' => 'Borrower not found'], 404);
+
+    try {
+        executeUpdate("DELETE FROM borrowers WHERE id = ?", [$id]);
+        respond(['message' => 'Borrower deleted']);
+    }
+    catch (Exception $e) {
+        respond(['error' => 'Delete failed: Borrower may have active loans'], 400);
+    }
 }
 
 respond(['error' => 'Method not allowed'], 405);
+
+// helper fetchOne since it was not in my previous write_to_file? Wait.
+// Let me check my config.php again.
+function fetchOne($sql, $params = [])
+{
+    return fetchRow($sql, $params);
+}

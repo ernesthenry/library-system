@@ -9,20 +9,17 @@ A full-stack Library Management System built with **PHP REST API**, **AJAX**, an
 ```
 library-system/
 ├── index.html              # Main frontend (SPA)
+├── setup.sql               # Database initialization script
 ├── api/
-│   ├── config.php          # Shared helpers & data access
+│   ├── config.php          # Database configuration & helpers
 │   ├── books.php           # REST API: Books CRUD
 │   ├── borrowers.php       # REST API: Borrowers CRUD
 │   ├── loans.php           # REST API: Loan management
 │   └── stats.php           # Dashboard statistics
-├── data/
-│   ├── books.json          # Persistent book data
-│   ├── borrowers.json      # Persistent borrower data
-│   └── loans.json          # Persistent loan records
-└── assets/
-    ├── css/style.css       # Stylesheet
-    └── js/app.js           # AJAX logic
-```
+├── assets/
+│   ├── css/style.css       # Stylesheet
+│   └── js/app.js           # AJAX logic
+└── index.html              # Main frontend (SPA)
 
 ---
 
@@ -39,21 +36,32 @@ cd library-system
 - A modern web browser
 
 ### 3. Run Locally (PHP Built-in Server)
-```bash
-cd library-system
-php -S localhost:8000
-```
-Then open **http://localhost:8000** in your browser.
+If you have PHP installed (Windows/Mac/Linux), you can run it directly:
+1. Open terminal/command prompt in the `library-system` folder.
+2. Run the built-in server:
+   ```bash
+   php -S localhost:8000
+   ```
+3. Visit **[http://localhost:8000](http://localhost:8000)** in your browser.
 
-### 4. Run with XAMPP / WAMP
-1. Copy the `library-system/` folder to your `htdocs/` (XAMPP) or `www/` (WAMP) directory
-2. Start Apache
-3. Visit **http://localhost/library-system/**
+### 4. Run with XAMPP / WAMP / MAMP
+1. Move the `library-system` folder into your server's public directory:
+   - **XAMPP**: `C:\xampp\htdocs\`
+   - **WAMP**: `C:\wamp64\www\`
+   - **MAMP**: `/Applications/MAMP/htdocs/`
+2. Start the **Apache** and **MySQL** services from your control panel.
+3. Open **[http://localhost/library-system/](http://localhost/library-system/)** in your browser.
 
-### 5. File Permissions (Linux/Mac)
-```bash
-chmod 664 data/*.json
-```
+### 5. Database Setup (MySQL)
+1. **Create the Database**: Open your MySQL server (via phpMyAdmin or terminal) and create a database:
+   ```sql
+   CREATE DATABASE library_db;
+   ```
+2. **Import Schema**: Import the `setup.sql` file provided in the root directory:
+   ```bash
+   mysql -u root -p library_db < setup.sql
+   ```
+3. **Configure Connection**: Open `api/config.php` and update your database credentials (`DB_HOST`, `DB_NAME`, `DB_USER`, `DB_PASS`).
 
 ---
 
@@ -123,7 +131,7 @@ chmod 664 data/*.json
 - **Availability tracking** — copies decrement/increment on borrow/return
 - **Dashboard stats** — totals, genre breakdown, loan status summary
 - **Toast notifications** for all API responses
-- **JSON file storage** — no database required
+- **MySQL Database** — robust relational storage with InnoDB support
 - **Filter & search** with URL query parameters passed via AJAX
 
 ---
@@ -134,8 +142,8 @@ chmod 664 data/*.json
 |-------|-----------|
 | Frontend | HTML5, CSS3, JavaScript (ES6+) |
 | Communication | AJAX (`fetch` API), JSON |
-| Backend | PHP 8 REST API |
-| Storage | JSON flat files |
+| Backend | PHP 8 REST API (PDO) |
+| Storage | MySQL 8.0+ |
 | Architecture | REST (GET/POST/PUT/DELETE) |
 
 ---

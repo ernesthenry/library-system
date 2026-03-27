@@ -1,10 +1,11 @@
 <?php
-// api/config.php - Shared configuration and helpers
+// api/config.php - Shared configuration for MySQL database
 
-define('DATA_DIR', __DIR__ . '/../data/');
-define('BOOKS_FILE', DATA_DIR . 'books.json');
-define('BORROWERS_FILE', DATA_DIR . 'borrowers.json');
-define('LOANS_FILE', DATA_DIR . 'loans.json');
+// --- Database Credentials ---
+define('DB_HOST', 'localhost');
+define('DB_NAME', 'library_db');
+define('DB_USER', 'root');
+define('DB_PASS', ''); // Set your MySQL password here
 
 // Set CORS and JSON headers
 header('Content-Type: application/json');
@@ -17,32 +18,52 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit();
 }
 
-// Read JSON file
-function readData($file) {
-    if (!file_exists($file)) return [];
-    $content = file_get_contents($file);
-    return json_decode($content, true) ?? [];
+// Database Connection
+try {
+    $dsn = "mysql:host=" . DB_HOST . ";dbname=" . DB_NAME . ";charset=utf8mb4";
+    $db = new PDO($dsn, DB_USER, DB_PASS);
+    $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    $db->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
+} catch (PDOException $e) {
+    respond(['error' => 'Database connection failed. Please ensure MySQL is running and credentials are correct.'], 500);
 }
 
-// Write JSON file
-function writeData($file, $data) {
-    return file_put_contents($file, json_encode(array_values($data), JSON_PRETTY_PRINT));
+// Database Utility Functions
+function query($sql, $params = []) {
+    global $db;
+    try {
+        $stmt = $db->prepare($sql);
+        $stmt->execute($params);
+        return $stmt;
+    } catch (PDOException $e) {
+        respond(['error' => 'Database Error: ' . $e->getMessage()], 500);
+    }
 }
 
-// Send JSON response
+function fetchAllRows($sql, $params = []) {
+    return query($sql, $params)->fetchAll();
+}
+
+function fetchRow($sql, $params = []) {
+    return query($sql, $params)->fetch();
+}
+
+function executeUpdate($sql, $params = []) {
+    query($sql, $params);
+}
+
+function lastId() {
+    global $db;
+    return $db->lastInsertId();
+}
+
+// Response and Data Handlers
 function respond($data, $code = 200) {
     http_response_code($code);
     echo json_encode($data);
     exit();
 }
 
-// Get next ID
-function nextId($items) {
-    if (empty($items)) return 1;
-    return max(array_column($items, 'id')) + 1;
-}
-
-// Get request body
 function getBody() {
     return json_decode(file_get_contents('php://input'), true) ?? [];
 }

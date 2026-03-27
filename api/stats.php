@@ -1,47 +1,35 @@
 <?php
-// api/stats.php - Dashboard statistics
+// api/stats.php - Dashboard statistics using SQLite
 require_once 'config.php';
-
-$books     = readData(BOOKS_FILE);
-$borrowers = readData(BORROWERS_FILE);
-$loans     = readData(LOANS_FILE);
 
 $today = date('Y-m-d');
 
-$totalBooks      = count($books);
-$totalCopies     = array_sum(array_column($books, 'copies'));
-$availableCopies = array_sum(array_column($books, 'available'));
-$totalBorrowers  = count($borrowers);
+// 1. Core Totals
+$totalBooks     = fetchRow("SELECT COUNT(*) as count FROM books")['count'];
+$totalCopies    = fetchRow("SELECT SUM(copies) as count FROM books")['count'] ?? 0;
+$availCopies    = fetchRow("SELECT SUM(available) as count FROM books")['count'] ?? 0;
+$totalBorrowers = fetchRow("SELECT COUNT(*) as count FROM borrowers")['count'];
 
-$activeLoans  = 0;
-$overdueLoans = 0;
-$returnedLoans = 0;
+// 2. Loan Status breakdown (using overdue logic)
+$returnedLoans = fetchRow("SELECT COUNT(*) as count FROM loans WHERE status = 'returned'")['count'];
+$overdueLoans  = fetchRow("SELECT COUNT(*) as count FROM loans WHERE status = 'active' AND dueDate < ?", [$today])['count'];
+$activeLoans   = fetchRow("SELECT COUNT(*) as count FROM loans WHERE status = 'active' AND dueDate >= ?", [$today])['count'];
 
-foreach ($loans as $l) {
-    if ($l['status'] === 'returned') {
-        $returnedLoans++;
-    } elseif ($l['dueDate'] < $today) {
-        $overdueLoans++;
-    } else {
-        $activeLoans++;
-    }
-}
-
-// Genre breakdown
+// 3. Genre breakdown
+$genreStats = fetchAllRows("SELECT genre, COUNT(*) as count FROM books GROUP BY genre");
 $genres = [];
-foreach ($books as $b) {
-    $g = $b['genre'] ?? 'General';
-    $genres[$g] = ($genres[$g] ?? 0) + 1;
+foreach ($genreStats as $row) {
+    $genres[$row['genre'] ?: 'General'] = $row['count'];
 }
 
 respond([
-    'totalBooks'      => $totalBooks,
-    'totalCopies'     => $totalCopies,
-    'availableCopies' => $availableCopies,
-    'checkedOut'      => $totalCopies - $availableCopies,
-    'totalBorrowers'  => $totalBorrowers,
-    'activeLoans'     => $activeLoans,
-    'overdueLoans'    => $overdueLoans,
-    'returnedLoans'   => $returnedLoans,
+    'totalBooks'      => (int)$totalBooks,
+    'totalCopies'     => (int)$totalCopies,
+    'availableCopies' => (int)$availCopies,
+    'checkedOut'      => (int)$totalCopies - (int)$availCopies,
+    'totalBorrowers'  => (int)$totalBorrowers,
+    'activeLoans'     => (int)$activeLoans,
+    'overdueLoans'    => (int)$overdueLoans,
+    'returnedLoans'   => (int)$returnedLoans,
     'genres'          => $genres,
 ]);
