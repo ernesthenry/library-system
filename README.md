@@ -28,23 +28,29 @@ library-system/
 
 ## Setup Instructions
 
-### Requirements
+### 1. Clone the Repository
+```bash
+git clone https://github.com/ernesthenry/library-system.git
+cd library-system
+```
+
+### 2. Requirements
 - **PHP 8.0+** (with `php -S` built-in server, or XAMPP/WAMP/LAMP)
 - A modern web browser
 
-### Run Locally (PHP Built-in Server)
+### 3. Run Locally (PHP Built-in Server)
 ```bash
 cd library-system
 php -S localhost:8000
 ```
 Then open **http://localhost:8000** in your browser.
 
-### Run with XAMPP / WAMP
+### 4. Run with XAMPP / WAMP
 1. Copy the `library-system/` folder to your `htdocs/` (XAMPP) or `www/` (WAMP) directory
 2. Start Apache
 3. Visit **http://localhost/library-system/**
 
-### File Permissions (Linux/Mac)
+### 5. File Permissions (Linux/Mac)
 ```bash
 chmod 664 data/*.json
 ```
