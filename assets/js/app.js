@@ -1,4 +1,4 @@
-// assets/js/app.js — Library Management System AJAX Logic
+// Library Management System AJAX Logic
 
 const API = 'api';
 
@@ -92,7 +92,12 @@ async function loadBooks() {
     }
     tbody.innerHTML = books.map(b => {
       const cls = b.available === 0 ? 'avail-none' : b.available <= 1 ? 'avail-low' : 'avail-good';
+      const cover = b.coverUrl 
+        ? `<img src="${b.coverUrl}" class="book-cover-thumb" onerror="this.outerHTML='<div class=\'book-cover-placeholder\'>📚</div>'" />`
+        : `<div class="book-cover-placeholder">📚</div>`;
+      
       return `<tr>
+        <td>${cover}</td>
         <td><strong>${esc(b.title)}</strong></td>
         <td>${esc(b.author)}</td>
         <td><span style="font-family:monospace;font-size:0.8rem">${esc(b.isbn)}</span></td>
@@ -126,8 +131,9 @@ async function editBook(id) {
     document.getElementById('f-author').value = b.author;
     document.getElementById('f-isbn').value   = b.isbn;
     document.getElementById('f-genre').value  = b.genre;
-    document.getElementById('f-year').value   = b.year;
-    document.getElementById('f-copies').value = b.copies;
+    document.getElementById('f-year').value     = b.year;
+    document.getElementById('f-copies').value   = b.copies;
+    document.getElementById('f-coverUrl').value = b.coverUrl || '';
     openModal('book-modal');
   } catch (e) { toast(e.message, 'error'); }
 }
@@ -137,9 +143,10 @@ async function saveBook() {
     title:  document.getElementById('f-title').value.trim(),
     author: document.getElementById('f-author').value.trim(),
     isbn:   document.getElementById('f-isbn').value.trim(),
-    genre:  document.getElementById('f-genre').value.trim(),
-    year:   document.getElementById('f-year').value,
-    copies: document.getElementById('f-copies').value,
+    genre:    document.getElementById('f-genre').value.trim(),
+    year:     document.getElementById('f-year').value,
+    copies:   document.getElementById('f-copies').value,
+    coverUrl: document.getElementById('f-coverUrl').value.trim(),
   };
   if (!data.title || !data.author) return toast('Title and author required', 'error');
 

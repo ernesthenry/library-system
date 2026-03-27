@@ -1,5 +1,5 @@
 <?php
-// REST API for Borrowers CRUD using MySQL
+// REST API for Books CRUD using MySQL
 require_once 'config.php';
 
 $method = $_SERVER['REQUEST_METHOD'];
@@ -45,17 +45,18 @@ if ($method === 'POST') {
         respond(['error' => 'Title and author are required'], 400);
     }
 
-    $title  = trim($body['title']);
-    $author = trim($body['author']);
-    $isbn   = trim($body['isbn']  ?? '');
-    $genre  = trim($body['genre'] ?? 'General');
-    $year   = (int)($body['year'] ?? date('Y'));
-    $copies = max(1, (int)($body['copies'] ?? 1));
+    $title    = trim($body['title']);
+    $author   = trim($body['author']);
+    $isbn     = trim($body['isbn']     ?? '');
+    $genre    = trim($body['genre']    ?? 'General');
+    $year     = (int)($body['year']    ?? date('Y'));
+    $copies   = max(1, (int)($body['copies']   ?? 1));
+    $coverUrl = trim($body['coverUrl'] ?? '');
 
     try {
         executeUpdate(
-            "INSERT INTO books (title, author, isbn, genre, year, copies, available) VALUES (?, ?, ?, ?, ?, ?, ?)",
-            [$title, $author, $isbn, $genre, $year, $copies, $copies]
+            "INSERT INTO books (title, author, isbn, genre, year, copies, available, coverUrl) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            [$title, $author, $isbn, $genre, $year, $copies, $copies, $coverUrl]
         );
         $newId = lastId();
         respond(fetchRow("SELECT * FROM books WHERE id = ?", [$newId]), 201);
@@ -72,11 +73,12 @@ if ($method === 'PUT') {
     $book = fetchRow("SELECT * FROM books WHERE id = ?", [$id]);
     if (!$book) respond(['error' => 'Book not found'], 404);
 
-    $title  = trim($body['title']  ?? $book['title']);
-    $author = trim($body['author'] ?? $book['author']);
-    $isbn   = trim($body['isbn']   ?? $book['isbn']);
-    $genre  = trim($body['genre']  ?? $book['genre']);
-    $year   = (int)($body['year']  ?? $book['year']);
+    $title    = trim($body['title']    ?? $book['title']);
+    $author   = trim($body['author']   ?? $book['author']);
+    $isbn     = trim($body['isbn']     ?? $book['isbn']);
+    $genre    = trim($body['genre']    ?? $book['genre']);
+    $year     = (int)($body['year']    ?? $book['year']);
+    $coverUrl = trim($body['coverUrl'] ?? $book['coverUrl']);
     
     $oldCopies = $book['copies'];
     $newCopies = (int)($body['copies'] ?? $oldCopies);
@@ -85,8 +87,8 @@ if ($method === 'PUT') {
 
     try {
         executeUpdate(
-            "UPDATE books SET title = ?, author = ?, isbn = ?, genre = ?, year = ?, copies = ?, available = ? WHERE id = ?",
-            [$title, $author, $isbn, $genre, $year, $newCopies, $available, $id]
+            "UPDATE books SET title = ?, author = ?, isbn = ?, genre = ?, year = ?, copies = ?, available = ?, coverUrl = ? WHERE id = ?",
+            [$title, $author, $isbn, $genre, $year, $newCopies, $available, $coverUrl, $id]
         );
         respond(fetchRow("SELECT * FROM books WHERE id = ?", [$id]));
     } catch (Exception $e) {

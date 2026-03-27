@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS books (
     year INT,
     copies INT DEFAULT 1,
     available INT DEFAULT 1,
+    coverUrl VARCHAR(500),
     INDEX (title),
     INDEX (author)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
@@ -45,12 +46,12 @@ CREATE TABLE IF NOT EXISTS loans (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- 4. Sample Data
-INSERT INTO books (title, author, isbn, genre, year, copies, available) VALUES
-('Clean Code', 'Robert C. Martin', '978-0132350884', 'Programming', 2008, 5, 5),
-('Refactoring', 'Martin Fowler', '978-0201485677', 'Programming', 1999, 3, 3),
-('The Great Gatsby', 'F. Scott Fitzgerald', '978-0743273565', 'Fiction', 1925, 2, 2),
-('Don Quixote', 'Miguel de Cervantes', '978-0060934347', 'Classic', 1605, 1, 1),
-('1984', 'George Orwell', '978-0451524935', 'Dystopian', 1949, 4, 4);
+INSERT INTO books (title, author, isbn, genre, year, copies, available, coverUrl) VALUES
+('Clean Code', 'Robert C. Martin', '978-0132350884', 'Programming', 2008, 5, 5, 'https://images-na.ssl-images-amazon.com/images/I/41jEbK-jG+L._SX374_BO1,204,203,200_.jpg'),
+('Refactoring', 'Martin Fowler', '978-0201485677', 'Programming', 1999, 3, 3, 'https://images-na.ssl-images-amazon.com/images/P/0201485672.01._SCLZZZZZZZ_SX500_.jpg'),
+('The Great Gatsby', 'F. Scott Fitzgerald', '978-0743273565', 'Fiction', 1925, 2, 2, 'https://images-na.ssl-images-amazon.com/images/I/81af+MCATTL.jpg'),
+('Don Quixote', 'Miguel de Cervantes', '978-0060934347', 'Classic', 1605, 1, 1, 'https://images-na.ssl-images-amazon.com/images/I/81M6bL2+YpL.jpg'),
+('1984', 'George Orwell', '978-0451524935', 'Dystopian', 1949, 4, 4, 'https://images-na.ssl-images-amazon.com/images/I/71kxa1-0mfL.jpg');
 
 INSERT INTO borrowers (name, email, phone, memberSince, status) VALUES
 ('Alice Johnson', 'alice@example.com', '123-456-7890', '2023-01-15', 'active'),
