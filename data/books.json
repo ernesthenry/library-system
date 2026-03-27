@@ -1,0 +1,8 @@
+[
+  {"id":1,"title":"Clean Code","author":"Robert C. Martin","isbn":"978-0132350884","genre":"Programming","year":2008,"copies":3,"available":2},
+  {"id":2,"title":"The Pragmatic Programmer","author":"Andrew Hunt","isbn":"978-0201616224","genre":"Programming","year":1999,"copies":2,"available":1},
+  {"id":3,"title":"Design Patterns","author":"Gang of Four","isbn":"978-0201633610","genre":"Programming","year":1994,"copies":4,"available":4},
+  {"id":4,"title":"Introduction to Algorithms","author":"Thomas H. Cormen","isbn":"978-0262033848","genre":"Computer Science","year":2009,"copies":2,"available":2},
+  {"id":5,"title":"The Great Gatsby","author":"F. Scott Fitzgerald","isbn":"978-0743273565","genre":"Fiction","year":1925,"copies":5,"available":5},
+  {"id":6,"title":"1984","author":"George Orwell","isbn":"978-0451524935","genre":"Fiction","year":1949,"copies":3,"available":2}
+]

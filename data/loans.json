@@ -1,0 +1,6 @@
+[
+  {"id":1,"bookId":1,"borrowerId":1,"borrowedDate":"2025-03-01","dueDate":"2025-03-15","returnedDate":"2025-03-14","status":"returned"},
+  {"id":2,"bookId":2,"borrowerId":2,"borrowedDate":"2025-03-10","dueDate":"2025-03-24","returnedDate":null,"status":"active"},
+  {"id":3,"bookId":5,"borrowerId":3,"borrowedDate":"2025-03-12","dueDate":"2025-03-26","returnedDate":null,"status":"active"},
+  {"id":4,"bookId":6,"borrowerId":4,"borrowedDate":"2025-02-20","dueDate":"2025-03-06","returnedDate":null,"status":"overdue"}
+]
