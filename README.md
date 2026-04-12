@@ -1,6 +1,13 @@
 # LibraryMS — Library Book Management System
 
-A full-stack Library Management System built with **PHP REST API**, **AJAX**, and **JSON** data storage.
+A full-stack Library Management System built with **PHP REST API**, **AJAX**, and **JSON**. This project is designed as an educational tool to demonstrate modern web development practices.
+
+---
+
+## 🎓 Learning & Presentation
+This project includes resources to help you understand and explain the architecture:
+- **Presentation_Guide.md**: A dedicated guide with diagrams explaining the Request/Response cycle.
+- **Educational Comments**: The source code is heavily commented (HTML, JS, PHP) to explain the logic and technical flow.
 
 ---
 
@@ -9,17 +16,19 @@ A full-stack Library Management System built with **PHP REST API**, **AJAX**, an
 ```
 library-system/
 ├── index.html              # Main frontend (SPA)
+├── Presentation_Guide.md   # [NEW] Visual guide to system communication
 ├── setup.sql               # Database initialization script
 ├── api/
-│   ├── config.php          # Database configuration & helpers
-│   ├── books.php           # REST API: Books CRUD
+│   ├── config.php          # Database configuration & helpers (Commented)
+│   ├── books.php           # REST API: Books CRUD (Commented)
 │   ├── borrowers.php       # REST API: Borrowers CRUD
 │   ├── loans.php           # REST API: Loan management
 │   └── stats.php           # Dashboard statistics
 ├── assets/
 │   ├── css/style.css       # Stylesheet
-│   └── js/app.js           # AJAX logic
+│   └── js/app.js           # AJAX logic (Commented)
 └── index.html              # Main frontend (SPA)
+```
 
 ---
 
@@ -33,6 +42,7 @@ cd library-system
 
 ### 2. Requirements
 - **PHP 8.0+** (with `php -S` built-in server, or XAMPP/WAMP/LAMP)
+- **MySQL 8.0+**
 - A modern web browser
 
 ### 3. Run Locally (PHP Built-in Server)
@@ -45,15 +55,12 @@ If you have PHP installed (Windows/Mac/Linux), you can run it directly:
 3. Visit **[http://localhost:8000](http://localhost:8000)** in your browser.
 
 ### 4. Run with XAMPP / WAMP / MAMP
-1. Move the `library-system` folder into your server's public directory:
-   - **XAMPP**: `C:\xampp\htdocs\`
-   - **WAMP**: `C:\wamp64\www\`
-   - **MAMP**: `/Applications/MAMP/htdocs/`
+1. Move the `library-system` folder into your server's public directory (`htdocs` or `www`).
 2. Start the **Apache** and **MySQL** services from your control panel.
 3. Open **[http://localhost/library-system/](http://localhost/library-system/)** in your browser.
 
 ### 5. Database Setup (MySQL)
-1. **Create the Database**: Open your MySQL server (via phpMyAdmin or terminal) and create a database:
+1. **Create the Database**: Open your MySQL server and create a database:
    ```sql
    CREATE DATABASE library_db;
    ```
@@ -77,18 +84,6 @@ If you have PHP installed (Windows/Mac/Linux), you can run it directly:
 | PUT    | `api/books.php?id=1` | Update book |
 | DELETE | `api/books.php?id=1` | Delete book |
 
-#### POST/PUT Body (JSON)
-```json
-{
-  "title": "Clean Code",
-  "author": "Robert C. Martin",
-  "isbn": "978-0132350884",
-  "genre": "Programming",
-  "year": 2008,
-  "copies": 3
-}
-```
-
 ### Borrowers — `api/borrowers.php`
 | Method | URL | Description |
 |--------|-----|-------------|
@@ -107,32 +102,27 @@ If you have PHP installed (Windows/Mac/Linux), you can run it directly:
 | PUT    | `api/loans.php?id=1` | Return book |
 | DELETE | `api/loans.php?id=1` | Delete loan record |
 
-#### POST Body (checkout)
-```json
-{
-  "bookId": 1,
-  "borrowerId": 2
-}
-```
+## 💡 How JSON is Used
 
-### Statistics — `api/stats.php`
-| Method | URL | Description |
-|--------|-----|-------------|
-| GET    | `api/stats.php` | Dashboard summary stats |
+JSON (JavaScript Object Notation) is the primary data exchange format for this system. It bridges the gap between the Browser and the Server:
+
+1.  **Sending Data (JS → PHP)**: When a user submits a form, JavaScript gathers the data into an object and uses `JSON.stringify()` to turn it into a string before sending it to the server.
+2.  **Reading Data (PHP)**: The server receives the raw string. Since it's JSON, PHP uses `json_decode(file_get_contents('php://input'), true)` to turn it back into a PHP array.
+3.  **Responding (PHP → JS)**: After processing data (like fetching books), PHP uses `json_encode()` to convert the database results into a JSON string and sends it back.
+4.  **Consuming Data (JS)**: The browser receives the JSON string, and our `fetch()` logic automatically converts it back into a JavaScript object for rendering.
 
 ---
 
 ## Features
 
 - **Full CRUD** for Books, Borrowers, and Loans
-- **AJAX-powered** — no page reloads; all data fetched dynamically
-- **Real-time search** with debounced input filtering
-- **Loan management** — check out, return, auto-detect overdue
-- **Availability tracking** — copies decrement/increment on borrow/return
-- **Dashboard stats** — totals, genre breakdown, loan status summary
-- **Toast notifications** for all API responses
-- **MySQL Database** — robust relational storage with InnoDB support
-- **Filter & search** with URL query parameters passed via AJAX
+- **Socially Documented**: Comprehensive logic comments for students/developers.
+- **AJAX-powered** — no page reloads; all data fetched dynamically using the `fetch` API.
+- **Real-time search** with debounced input filtering to optimize server requests.
+- **Loan management** — check out, return, auto-detect overdue status.
+- **Availability tracking** — automatic copy management on borrow/return actions.
+- **Dashboard stats** — live totals and genre breakdown.
+- **Responsive Design**: Mobile-friendly sidebar and navigation.
 
 ---
 
@@ -150,9 +140,10 @@ If you have PHP installed (Windows/Mac/Linux), you can run it directly:
 
 ## Concepts Demonstrated
 
-- **REST API design** — proper HTTP methods and status codes
-- **Asynchronous communication** — async/await AJAX calls
-- **Parameter passing** — query strings, request body (JSON)
-- **Server-client interaction** — PHP processes, JSON response
-- **CRUD operations** — Create, Read, Update, Delete on 3 resources
+- **REST API design** — proper HTTP methods and status codes.
+- **Asynchronous communication** — handling background data fetching.
+- **PDO Security** — prepared statements to prevent SQL injection.
+- **Single Page Application** — dynamic navigation without page reloads.
+- **JSON Data Exchange** — structured passing of data between Client and Server.
+ Create, Read, Update, Delete on 3 resources
 - **Single Page Application** — dynamic navigation without page reloads
