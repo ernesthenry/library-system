@@ -1,11 +1,24 @@
 <!-- 
+  ==============================================================================
   Library Management System - Main Entry Point (HTML)
+  ==============================================================================
+  
+  ROLE:
+  - This file serves as the primary User Interface (UI) for the application.
+  - It implements a "Single Page Application" (SPA) architecture where different 
+    views are contained within <section> tags and toggled via JavaScript.
   
   STRUCTURE OVERVIEW:
-  - Sidebar: Handles navigation between different "pages".
-  - Main Component: Contains several <section> elements. Only one is visible at a time (SPA style).
-  - Modals: Hidden overlays used for adding/editing data without leaving the page.
-  - Scripts: Connects to 'app.js' which handles all the interactive logic and API calls.
+  - Sidebar: Fixed navigation menu used to switch between "pages".
+  - Main (Main Component): A container for multiple <section> elements.
+    Only the section with the 'active' class is visible at any given time.
+  - Modals (Overlays): Hidden dialog boxes used for data entry (Add/Edit).
+  - Toasts: A dynamic container for popup notifications (Success/Error).
+  
+  DEPENDENCIES:
+  - assets/css/style.css: Handles all layout, typography, and animations.
+  - assets/js/app.js: Contains the logic for AJAX calls, navigation, and CRUD.
+  ==============================================================================
 -->
 
 <!DOCTYPE html>
@@ -13,26 +26,33 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>LibraryMS — Book Management System</title>
+  <title>LibraryMS — Modern Book Management</title>
+  
+  <!-- Main Stylesheet -->
   <link rel="stylesheet" href="assets/css/style.css" />
 </head>
 <body>
 
-<!-- ── Mobile Header ────────────────────────────────────────────────────────── -->
-<!-- Visible only on small screens; contains the hamburger menu toggle -->
+<!-- ── MOBILE HEADER (Breakpoint: 992px) ───────────────────────────────────── -->
+<!-- This header is hidden on desktops and appears only on mobile/tablets. 
+     It provides the hamburger menu toggle for the sidebar. -->
 <header class="mobile-header">
   <div class="mobile-logo">📖 LibraryMS</div>
-  <button id="sidebar-toggle" class="hamburger">☰</button>
+  <button id="sidebar-toggle" class="hamburger" aria-label="Toggle Menu">☰</button>
 </header>
 
-<!-- ── Sidebar ────────────────────────────────────────────────────────────── -->
-<!-- Static navigation menu. Clicks here trigger the 'navigate()' function in app.js -->
+<!-- ── SIDEBAR NAVIGATION ─────────────────────────────────────────────────── -->
+<!-- The sidebar is a fixed element on desktops. On mobile, it slides in from 
+     the left when the hamburger menu is clicked. -->
 <aside class="sidebar">
   <div class="sidebar-logo">
     <h1>📖 <span class="logo-text">LibraryMS</span></h1>
     <p>Management System</p>
   </div>
+  
   <nav class="nav">
+    <!-- Each button has a 'data-page' attribute which app.js use to identify 
+         which section to show when clicked. -->
     <button class="nav-item" data-page="dashboard">
       <span class="icon">🏠</span><span>Dashboard</span>
     </button>
@@ -46,22 +66,28 @@
       <span class="icon">🔄</span><span>Loans</span>
     </button>
   </nav>
-  <div class="sidebar-footer">REST API + AJAX · PHP · JSON</div>
+  
+  <div class="sidebar-footer">
+    <!-- Technical stack indicators -->
+    REST API + AJAX · PHP · SQL
+  </div>
 </aside>
 
-<!-- ── Main ───────────────────────────────────────────────────────────────── -->
-<!-- This container holds all the different views. Logic in app.js toggles the 'active' class -->
+<!-- ── MAIN CONTENT AREA ──────────────────────────────────────────────────── -->
+<!-- This <main> element contains all the "pages" of our SPA. 
+     The 'navigate()' function in app.js manages the visibility. -->
 <main class="main">
 
-  <!-- DASHBOARD PAGE: Shows high-level statistics -->
+  <!-- 1. DASHBOARD PAGE: Key Statistics & Overview -->
   <section id="page-dashboard" class="page">
     <div class="page-header">
       <h2>Dashboard</h2>
-      <p>Library overview — live stats loaded via AJAX</p>
+      <p>Live library stats and quick insights</p>
     </div>
 
+    <!-- Stat Grid: Layout for the summary cards -->
     <div class="stats-grid">
-      <!-- Stat cards are populated dynamically by loadDashboard() in app.js -->
+      <!-- These 'stat-value' elements are filled by loadDashboard() in app.js -->
       <div class="stat-card gold">
         <div class="stat-icon">📚</div>
         <div class="stat-value" id="stat-books">—</div>
@@ -94,13 +120,14 @@
       </div>
     </div>
 
+    <!-- Genre Breakdown: Categorical analysis -->
     <div class="table-wrap" style="padding:24px">
       <h3 style="font-family:'Playfair Display',serif;margin-bottom:16px;color:var(--accent)">Books by Genre</h3>
       <div id="genre-list"><div class="loading">Loading…</div></div>
     </div>
   </section>
 
-  <!-- BOOKS PAGE: The main catalog with search and filters -->
+  <!-- 2. BOOKS PAGE: Inventory & Catalog Management -->
   <section id="page-books" class="page">
     <div class="page-header">
       <h2>Books Catalogue</h2>
@@ -143,7 +170,7 @@
     </div>
   </section>
 
-  <!-- BORROWERS PAGE -->
+  <!-- 3. BORROWERS PAGE -->
   <section id="page-borrowers" class="page">
     <div class="page-header">
       <h2>Borrowers</h2>
@@ -170,7 +197,7 @@
     </div>
   </section>
 
-  <!-- LOANS PAGE: Tracking who has which book -->
+  <!-- 4. LOANS PAGE: Tracking who has which book -->
   <section id="page-loans" class="page">
     <div class="page-header">
       <h2>Loans</h2>
@@ -204,7 +231,7 @@
 
 </main>
 
-<!-- ── Modals ──────────────────────────────────────────────────────────────── -->
+<!-- ── MODAL DIALOGS ──────────────────────────────────────────────────────── -->
 <!-- These are hidden by default and shown via CSS when the 'open' class is added -->
 
 <!-- Book Modal: Used for both Adding and Editing books -->
@@ -290,22 +317,37 @@
   </div>
 </div>
 
-<!-- Loan Modal -->
+<!-- C. Loan Modal (Checkout) -->
 <div id="loan-modal" class="modal-overlay">
   <div class="modal">
-    <h3>Check Out a Book</h3>
+    <h3>Issue a Book (Checkout)</h3>
     <div class="form-group">
-      <label>Book (available copies only)</label>
-      <select id="fl-book"><option>Loading…</option></select>
+      <label>Select Book (available copies only)</label>
+      <select id="fl-book"><option>Loading...</option></select>
     </div>
     <div class="form-group">
-      <label>Borrower</label>
-      <select id="fl-borrower"><option>Loading…</option></select>
+      <label>Select Borrower</label>
+      <select id="fl-borrower"><option>Loading...</option></select>
     </div>
-    <p style="font-size:0.8rem;color:var(--muted);margin-top:8px">Due date will be set automatically to 14 days from today.</p>
+    <p style="font-size:0.8rem;color:var(--muted);margin-top:8px">
+      Standard loan period: <strong>14 days</strong> from today.
+    </p>
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeModal('loan-modal')">Cancel</button>
-      <button class="btn btn-primary" onclick="saveLoan()">Check Out</button>
+      <button class="btn btn-primary" onclick="saveLoan()">Complete Checkout</button>
+    </div>
+  </div>
+</div>
+
+<!-- D. Confirmation Modal (Generic for deletions/destructive acts) -->
+<div id="confirm-modal" class="modal-overlay">
+  <div class="modal" style="max-width:400px;text-align:center">
+    <div style="font-size:3rem;margin-bottom:16px">⚠️</div>
+    <h3 id="confirm-title">Are you sure?</h3>
+    <p id="confirm-msg" style="color:var(--muted);margin-bottom:24px">This action cannot be undone.</p>
+    <div class="modal-footer" style="justify-content:center">
+      <button class="btn btn-ghost" onclick="closeModal('confirm-modal')">No, Cancel</button>
+      <button id="confirm-proceed-btn" class="btn btn-danger">Yes, Proceed</button>
     </div>
   </div>
 </div>
@@ -317,3 +359,4 @@
 <script src="assets/js/app.js"></script>
 </body>
 </html>
+

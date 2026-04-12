@@ -1,158 +1,114 @@
 <?php
-// REST API for Loan management using MySQL
+/**
+ * ==============================================================================
+ * Library Management System - Loans & Transactions API (REST)
+ * ==============================================================================
+ * 
+ * ROLE:
+ * Handles the "Circulation" logic of the library. 
+ * Manages checking out books, returning them, and tracking due dates.
+ * 
+ * DATAFlow:
+ * 1. POST: Creates a new loan record (Checkout).
+ * 2. PUT: Marks an existing loan as 'returned' (Return).
+ * 3. GET: Lists current and past circulation records.
+ * 
+ * BUSINESS LOGIC:
+ * - A checkout decreases available copies of a book.
+ * - A return increases available copies.
+ * - Due dates are automatically 14 days from the borrowed date.
+ * ==============================================================================
+ */
+
 require_once 'config.php';
 
 $method = $_SERVER['REQUEST_METHOD'];
-$id = isset($_GET['id']) ? (int)$_GET['id'] : null;
+$id     = $_GET['id'] ?? null;
 
-// Helper: enrichment function for loans (joining names)
-function getEnrichedLoan($id)
-{
-    return fetchRow("
-        SELECT l.*, b.title as bookTitle, br.name as borrowerName
-        FROM loans l
-        JOIN books b ON l.bookId = b.id
-        JOIN borrowers br ON l.borrowerId = br.id
-        WHERE l.id = ?
-    ", [$id]);
-}
-
-// ── GET ──────────────────────────────────────────────────────────────────────
+// ── GET: READ CIRCULATION DATA ───────────────────────────────────────────────
 if ($method === 'GET') {
-    if ($id) {
-        $loan = getEnrichedLoan($id);
-        $loan ? respond($loan) : respond(['error' => 'Loan not found'], 404);
-    }
+    $status = $_GET['status'] ?? ''; // Filter: 'active', 'overdue', 'returned'
 
-    $status = $_GET['status'] ?? '';
-    $borrowerId = isset($_GET['borrowerId']) ? (int)$_GET['borrowerId'] : 0;
-    $bookId = isset($_GET['bookId']) ? (int)$_GET['bookId'] : 0;
-
-    $where = ["1=1"];
+    $sql = "SELECT l.*, b.title as bookTitle, br.name as borrowerName 
+            FROM loans l
+            JOIN books b ON l.bookId = b.id
+            JOIN borrowers br ON l.borrowerId = br.id";
+    
+    $where = [];
     $params = [];
 
-    if ($status) {
-        $where[] = "l.status = ?";
-        $params[] = $status;
-    }
-    if ($borrowerId) {
-        $where[] = "l.borrowerId = ?";
-        $params[] = $borrowerId;
-    }
-    if ($bookId) {
-        $where[] = "l.bookId = ?";
-        $params[] = $bookId;
+    if ($status === 'active') {
+        $where[] = "l.status = 'active'";
+    } elseif ($status === 'overdue') {
+        $where[] = "l.status = 'active' AND l.dueDate < CURDATE()";
+    } elseif ($status === 'returned') {
+        $where[] = "l.status = 'returned'";
     }
 
-    $sql = "
-        SELECT l.*, b.title as bookTitle, br.name as borrowerName
-        FROM loans l
-        JOIN books b ON l.bookId = b.id
-        JOIN borrowers br ON l.borrowerId = br.id
-        WHERE " . implode(' AND ', $where);
-
-    $loans = fetchAllRows($sql, $params);
-
-    // Auto-overdue detection on active loans
-    $today = date('Y-m-d');
-    foreach ($loans as &$l) {
-        if ($l['status'] === 'active' && $l['dueDate'] < $today) {
-            $l['status'] = 'overdue';
-        }
+    if ($where) {
+        $sql .= " WHERE " . implode(" AND ", $where);
     }
 
-    respond($loans);
+    $sql .= " ORDER BY l.borrowedDate DESC";
+    respond(fetchAllRows($sql, $params));
 }
 
-// ── POST (borrow copy) ───────────────────────────────────────────────────────
+// ── POST: CHECKOUT A BOOK (CREATE LOAN) ──────────────────────────────────────
 if ($method === 'POST') {
-    $body = getBody();
-    $bookId = (int)($body['bookId'] ?? 0);
-    $borrowerId = (int)($body['borrowerId'] ?? 0);
+    $data = getBody();
+    $bookId     = $data['bookId']     ?? null;
+    $borrowerId = $data['borrowerId'] ?? null;
 
-    if (!$bookId || !$borrowerId)
-        respond(['error' => 'bookId and borrowerId required'], 400);
+    if (!$bookId || !$borrowerId) {
+        respond(['error' => 'Book ID and Borrower ID are required.'], 400);
+    }
 
-    // 1. Availability check
-    $book = fetchRow("SELECT * FROM books WHERE id = ?", [$bookId]);
-    if (!$book)
-        respond(['error' => 'Book not found'], 404);
-    if ($book['available'] <= 0)
-        respond(['error' => 'No copies available'], 409);
+    // 1. Verify book availability before proceeding
+    $book = fetchRow("SELECT title, copies, 
+                      (copies - (SELECT COUNT(*) FROM loans WHERE bookId = ? AND status != 'returned')) as available 
+                      FROM books WHERE id = ?", [$bookId, $bookId]);
+    
+    if (!$book) respond(['error' => 'Book not found.'], 404);
+    if ($book['available'] <= 0) {
+        respond(['error' => "Sorry, '{$book['title']}' is currently out of stock."], 409);
+    }
 
-    // 2. Borrower check
-    $borrower = fetchRow("SELECT id FROM borrowers WHERE id = ?", [$borrowerId]);
-    if (!$borrower)
-        respond(['error' => 'Borrower not found'], 404);
-
-    $dueDate = date('Y-m-d', strtotime('+14 days'));
+    // 2. Insert the loan record
     $borrowedDate = date('Y-m-d');
+    $dueDate      = date('Y-m-d', strtotime('+14 days'));
 
-    try {
-        // Use transaction for consistency
-        global $db;
-        $db->beginTransaction();
-
-        executeUpdate(
-            "INSERT INTO loans (bookId, borrowerId, borrowedDate, dueDate, status) VALUES (?, ?, ?, ?, 'active')",
+    executeUpdate(
+        "INSERT INTO loans (bookId, borrowerId, borrowedDate, dueDate, status) VALUES (?, ?, ?, ?, 'active')",
         [$bookId, $borrowerId, $borrowedDate, $dueDate]
-        );
-        $newId = lastId();
+    );
 
-        // Update book availability
-        executeUpdate("UPDATE books SET available = available - 1 WHERE id = ?", [$bookId]);
-
-        $db->commit();
-        respond(getEnrichedLoan($newId), 201);
-    }
-    catch (Exception $e) {
-        if ($db->inTransaction())
-            $db->rollBack();
-        respond(['error' => 'Loan failed: ' . $e->getMessage()], 500);
-    }
+    respond(['message' => 'Book checked out successfully', 'dueDate' => $dueDate], 201);
 }
 
-// ── PUT (return copy) ────────────────────────────────────────────────────────
+// ── PUT: RETURN A BOOK (UPDATE LOAN) ─────────────────────────────────────────
 if ($method === 'PUT') {
-    if (!$id)
-        respond(['error' => 'Loan ID required'], 400);
+    if (!$id) respond(['error' => 'Missing loan ID'], 400);
 
-    $loan = fetchRow("SELECT * FROM loans WHERE id = ?", [$id]);
-    if (!$loan)
-        respond(['error' => 'Loan not found'], 404);
-    if ($loan['status'] === 'returned')
-        respond(['error' => 'Book already returned'], 409);
+    $loan = fetchRow("SELECT status FROM loans WHERE id = ?", [$id]);
+    if (!$loan) respond(['error' => 'Loan record not found'], 404);
+    if ($loan['status'] === 'returned') respond(['error' => 'This book has already been returned.'], 409);
 
-    try {
-        global $db;
-        $db->beginTransaction();
+    $returnedDate = date('Y-m-d');
+    
+    executeUpdate(
+        "UPDATE loans SET returnedDate = ?, status = 'returned' WHERE id = ?",
+        [$returnedDate, $id]
+    );
 
-        $returnedDate = date('Y-m-d');
-        executeUpdate("UPDATE loans SET returnedDate = ?, status = 'returned' WHERE id = ?", [$returnedDate, $id]);
-
-        // Update book availability
-        executeUpdate("UPDATE books SET available = available + 1 WHERE id = ?", [$loan['bookId']]);
-
-        $db->commit();
-        respond(getEnrichedLoan($id));
-    }
-    catch (Exception $e) {
-        if ($db->inTransaction())
-            $db->rollBack();
-        respond(['error' => 'Return failed: ' . $e->getMessage()], 500);
-    }
+    respond(['message' => 'Book returned successfully']);
 }
 
-// ── DELETE ───────────────────────────────────────────────────────────────────
+// ── DELETE: REMOVE LOAN RECORD ───────────────────────────────────────────────
 if ($method === 'DELETE') {
-    if (!$id)
-        respond(['error' => 'ID required'], 400);
-    $loan = fetchRow("SELECT * FROM loans WHERE id = ?", [$id]);
-    if (!$loan)
-        respond(['error' => 'Loan not found'], 404);
-
+    if (!$id) respond(['error' => 'Missing loan ID'], 400);
+    
     executeUpdate("DELETE FROM loans WHERE id = ?", [$id]);
-    respond(['message' => 'Loan record removed']);
+    respond(['message' => 'Loan record deleted']);
 }
 
-respond(['error' => 'Method not allowed'], 405);
+respond(['error' => 'Method Not Allowed'], 405);

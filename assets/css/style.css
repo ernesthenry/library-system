@@ -1,22 +1,40 @@
-/* assets/css/style.css */
+/* 
+  ==============================================================================
+  Library Management System - Design System & UI Components
+  ==============================================================================
+  
+  ARCHITECTURE:
+  - Design Tokens: Defined as CSS variables in :root for consistency.
+  - Reset & Base: Standardizing box model and typography across browsers.
+  - Components: Modular styles for Sidebar, Stat Cards, Tables, and Modals.
+  - Responsive: Media queries for fluid layouts on Mobile and Tablets.
+  
+  TYPOGRAPHY:
+  - Playfair Display: Used for headings to give a premium, editorial feel.
+  - DM Sans: Used for body text and interactive elements for readability.
+  ==============================================================================
+*/
+
 @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=DM+Sans:wght@300;400;500;600&display=swap');
 
+/* --- DESIGN TOKENS (CSS Variables) --- */
 :root {
-  --bg:         #0d0f14;
-  --surface:    #13161e;
-  --surface2:   #1a1e2a;
-  --border:     #252836;
-  --accent:     #c8a96e;
-  --accent2:    #7b68ee;
-  --danger:     #e05c5c;
-  --success:    #4caf7d;
-  --warning:    #e0a84a;
-  --text:       #e8e6df;
-  --muted:      #6b7280;
-  --radius:     10px;
-  --shadow:     0 4px 24px rgba(0,0,0,0.4);
+  --bg:         #0d0f14;       /* Deep dark background */
+  --surface:    #13161e;       /* Card and sidebar background */
+  --surface2:   #1a1e2a;       /* Hover states and secondary surfaces */
+  --border:     #252836;       /* Subtle dividers */
+  --accent:     #c8a96e;       /* Elegant gold for primary actions */
+  --accent2:    #7b68ee;       /* Soft purple for variety */
+  --danger:     #e05c5c;       /* Red for delete/errors */
+  --success:    #4caf7d;       /* Green for positive feedback */
+  --warning:    #e0a84a;       /* Amber for pending/overdue */
+  --text:       #e8e6df;       /* Off-white for high contrast text */
+  --muted:      #6b7280;       /* Grey for secondary labels */
+  --radius:     10px;          /* Standard corner rounding */
+  --shadow:     0 4px 24px rgba(0,0,0,0.4); /* Depth for modals */
 }
 
+/* --- BASE STYLES --- */
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 body {
@@ -29,7 +47,8 @@ body {
   position: relative;
 }
 
-/* ── Mobile Header ── */
+/* ── MOBILE HEADER ────────────────────────────────────────────────────────── */
+/* Specifically for small screens where the sidebar is hidden by default. */
 .mobile-header {
   display: none;
   position: fixed;
@@ -57,7 +76,7 @@ body {
   padding: 5px;
 }
 
-/* ── Sidebar ── */
+/* ── SIDEBAR NAVIGATION ─────────────────────────────────────────────────── */
 .sidebar {
   width: 240px;
   min-height: 100vh;
@@ -82,7 +101,13 @@ body {
   color: var(--accent);
   letter-spacing: 0.02em;
 }
-.sidebar-logo p { font-size: 0.72rem; color: var(--muted); margin-top: 2px; letter-spacing: 0.08em; text-transform: uppercase; }
+.sidebar-logo p { 
+  font-size: 0.72rem; 
+  color: var(--muted); 
+  margin-top: 2px; 
+  letter-spacing: 0.08em; 
+  text-transform: uppercase; 
+}
 
 .nav { padding: 16px 12px; flex: 1; }
 .nav-item {
@@ -108,7 +133,7 @@ body {
   color: var(--muted);
 }
 
-/* ── Main ── */
+/* ── MAIN CONTENT ───────────────────────────────────────────────────────── */
 .main {
   margin-left: 240px;
   flex: 1;
@@ -116,6 +141,7 @@ body {
   min-height: 100vh;
 }
 
+/* SPA View Logic: Pages are hidden unless they are active */
 .page { display: none; }
 .page.active { display: block; }
 
@@ -128,7 +154,7 @@ body {
 }
 .page-header p { color: var(--muted); margin-top: 4px; font-size: 0.9rem; }
 
-/* ── Stat Cards ── */
+/* ── STAT CARDS (Dashboard) ────────────────────────────────────────────── */
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
@@ -143,6 +169,7 @@ body {
   position: relative;
   overflow: hidden;
 }
+/* Visual accent line on top of each card */
 .stat-card::before {
   content: '';
   position: absolute;
@@ -159,7 +186,7 @@ body {
 .stat-value { font-size: 2rem; font-weight: 700; font-family: 'Playfair Display', serif; }
 .stat-label { font-size: 0.78rem; color: var(--muted); margin-top: 2px; text-transform: uppercase; letter-spacing: 0.06em; }
 
-/* ── Toolbar ── */
+/* ── TOOLBAR (Filters & Search) ────────────────────────────────────────── */
 .toolbar {
   display: flex; gap: 12px; align-items: center;
   margin-bottom: 20px; flex-wrap: wrap;
@@ -191,7 +218,7 @@ select.filter {
   cursor: pointer;
 }
 
-/* ── Buttons ── */
+/* ── BUTTONS ───────────────────────────────────────────────────────────── */
 .btn {
   padding: 9px 18px;
   border-radius: var(--radius);
@@ -217,7 +244,7 @@ select.filter {
 .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
 .btn-sm { padding: 5px 12px; font-size: 0.78rem; }
 
-/* ── Table ── */
+/* ── DATA TABLES ───────────────────────────────────────────────────────── */
 .table-wrap {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -245,6 +272,7 @@ tbody tr:last-child { border-bottom: none; }
 tbody tr:hover { background: var(--surface2); }
 tbody td { padding: 12px 16px; font-size: 0.88rem; }
 
+/* Status Badges */
 .badge {
   display: inline-block;
   padding: 3px 9px;
@@ -261,7 +289,7 @@ tbody td { padding: 12px 16px; font-size: 0.88rem; }
 
 .actions { display: flex; gap: 6px; }
 
-/* ── Modal ── */
+/* ── MODALS (Overlays) ──────────────────────────────────────────────────── */
 .modal-overlay {
   display: none;
   position: fixed; 
@@ -321,7 +349,7 @@ tbody td { padding: 12px 16px; font-size: 0.88rem; }
 
 .modal-footer { display: flex; gap: 10px; justify-content: flex-end; margin-top: 22px; }
 
-/* ── Toast ── */
+/* ── TOAST NOTIFICATIONS ───────────────────────────────────────────────── */
 .toast-container {
   position: fixed; bottom: 24px; right: 24px;
   z-index: 9999; display: flex; flex-direction: column; gap: 8px;
@@ -345,6 +373,7 @@ tbody td { padding: 12px 16px; font-size: 0.88rem; }
 .toast.error   { border-left: 3px solid var(--danger); }
 .toast.info    { border-left: 3px solid var(--accent); }
 
+/* --- LOADING & EMPTY STATES --- */
 .empty-state {
   text-align: center;
   padding: 48px;
@@ -355,12 +384,13 @@ tbody td { padding: 12px 16px; font-size: 0.88rem; }
 
 .loading { text-align: center; padding: 40px; color: var(--muted); font-size: 0.9rem; }
 
+/* Availability indicators */
 .avail-count { font-weight: 600; }
 .avail-good  { color: var(--success); }
 .avail-low   { color: var(--warning); }
 .avail-none  { color: var(--danger);  }
 
-/* Book Covers */
+/* --- BOOK COMPONENT ASSETS --- */
 .book-cover-thumb {
   width: 44px;
   height: 64px;
@@ -384,7 +414,7 @@ tbody td { padding: 12px 16px; font-size: 0.88rem; }
   filter: grayscale(1);
 }
 
-/* Responsive */
+/* ── RESPONSIVE ADAPTATIONS (Media Queries) ───────────────────────────── */
 @media (max-width: 992px) {
   .sidebar {
     transform: translateX(-100%);
@@ -408,3 +438,4 @@ tbody td { padding: 12px 16px; font-size: 0.88rem; }
   .toolbar { flex-direction: column; align-items: stretch; }
   .search-box { width: 100%; }
 }
+

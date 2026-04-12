@@ -1,97 +1,167 @@
-// Library Management System - Frontend Logic (JavaScript)
 /**
- * ARCHITECTURE OVERVIEW:
- * This script acts as the "Controller". It:
- * 1. Listens for user events (clicks, searches).
- * 2. Communicates with the PHP backend via the Fetch API (AJAX).
- * 3. Receives JSON data and dynamically updates the HTML (DOM manipulation).
+ * ==============================================================================
+ * Library Management System - Frontend Controller (JavaScript)
+ * ==============================================================================
+ * 
+ * ROLE:
+ * This script acts as the "Controller" in our architecture. It:
+ * 1. Manages State: Tracks active pages and modal visibility.
+ * 2. Handles Events: Listens for clicks, typing, and form submissions.
+ * 3. Communicates with Backend: Uses the Fetch API to talk to PHP endpoints.
+ * 4. Updates UI: Dynamically modifies the DOM based on API responses.
+ * 
+ * DESIGN PATTERN:
+ * - Single Page Application (SPA): Toggles CSS 'active' classes to switch views.
+ * - AJAX/REST: Asynchronous communication with JSON data exchange.
+ * ==============================================================================
  */
 
-const API = 'api'; // Base directory for our PHP backend files
+const API = 'api'; // Base directory for our PHP backend endpoints
 
-// ── Utility: AJAX wrapper ────────────────────────────────────────────────────
+// ── UTILITY: AJAX WRAPPER ────────────────────────────────────────────────────
+
 /**
- * A central helper function to handle all HTTP requests.
+ * A central helper function to handle all HTTP requests (GET, POST, PUT, DELETE).
+ * Simplifies error handling and URL construction.
+ * 
  * @param {string} endpoint - The PHP file name (e.g., 'books.php').
- * @param {string} method - GET, POST, PUT, or DELETE.
- * @param {object} body - Data to send to the server (for POST/PUT).
- * @param {object} params - Query parameters (for GET).
+ * @param {string} method - HTTP Verb (GET, POST, PUT, DELETE).
+ * @param {object|null} body - Data to send to the server (stringified to JSON).
+ * @param {object} params - Key-value pairs for URL query parameters.
+ * @returns {Promise<any>} - The JSON data returned by the server.
  */
 async function ajax(endpoint, method = 'GET', body = null, params = {}) {
-  // Construct the URL with query parameters if provided
+  // 1. Construct the URL with query parameters (e.g., api/books.php?genre=Science)
   const url = new URL(`${API}/${endpoint}`, window.location.href);
-  Object.entries(params).forEach(([k, v]) => { if (v !== '') url.searchParams.set(k, v); });
+  Object.entries(params).forEach(([k, v]) => { 
+    if (v !== '' && v !== null && v !== undefined) url.searchParams.set(k, v); 
+  });
 
   const opts = {
     method,
     headers: { 'Content-Type': 'application/json' },
   };
   
-  // If we are sending data, stringify it into JSON
+  // 2. Add JSON body if provided
   if (body) opts.body = JSON.stringify(body);
 
-  // Send the request using the native Fetch API
+  // 3. Send the request
   const res  = await fetch(url, opts);
-  const data = await res.json(); // The server always responds with JSON
   
-  // Check if the server returned an error (e.g., 404 or 500)
-  if (!res.ok) throw new Error(data.error || 'Request failed');
+  // 4. Parse JSON response
+  const data = await res.json();
+  
+  // 5. Check for HTTP errors (4xx, 5xx)
+  if (!res.ok) throw new Error(data.error || `Request failed with status ${res.status}`);
+  
   return data;
 }
 
-// ── Toast notifications ──────────────────────────────────────────────────────
-/** High-level feedback for the user (Success/Error messages) */
+// ── TOAST NOTIFICATIONS ──────────────────────────────────────────────────────
+
+/**
+ * Displays a temporary popup message to provide feedback to the user.
+ * 
+ * @param {string} msg - The text to display.
+ * @param {'success'|'error'|'info'} type - Sets the visual style (green/red/gold).
+ */
 function toast(msg, type = 'info') {
   const icons = { success: '✅', error: '❌', info: 'ℹ️' };
   const el = document.createElement('div');
   el.className = `toast ${type}`;
   el.innerHTML = `<span>${icons[type]}</span><span>${msg}</span>`;
+  
   document.getElementById('toastContainer').appendChild(el);
-  setTimeout(() => el.remove(), 3500); // Auto-hide after 3.5 seconds
+  
+  // Auto-remove after animation finishes
+  setTimeout(() => el.remove(), 3500);
 }
 
-// ── Navigation ───────────────────────────────────────────────────────────────
-/** Handles switching between different pages without refreshing the browser */
+// ── NAVIGATION & SPA LOGIC ───────────────────────────────────────────────────
+
+/**
+ * Handles switching between different "pages" (sections) in the SPA.
+ * Manages both visibility and triggering data load for the new page.
+ * 
+ * @param {string} page - The ID suffix of the page to show (e.g., 'books', 'loans').
+ */
 function navigate(page) {
-  // Hide all pages and deactivate all nav items
+  // 1. UI: Hide all pages and deactivate navigation links
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   
-  // Show the requested page
-  document.getElementById(`page-${page}`).classList.add('active');
+  // 2. UI: Show the requested page section
+  const targetPage = document.getElementById(`page-${page}`);
+  if (targetPage) targetPage.classList.add('active');
+  
+  // 3. UI: Highlight the corresponding sidebar menu item
   const navItem = document.querySelector(`.nav-item[data-page="${page}"]`);
   if (navItem) navItem.classList.add('active');
 
-  // Close sidebar on navigate (important for mobile UX)
+  // 4. UX: Ensure sidebar closes on mobile after selection
   const sidebar = document.querySelector('.sidebar');
   if (sidebar) sidebar.classList.remove('open');
 
-  // Trigger data loading for the specific page
-  if (page === 'dashboard') loadDashboard();
-  if (page === 'books')     loadBooks();
-  if (page === 'borrowers') loadBorrowers();
-  if (page === 'loans')     loadLoans();
+  // 5. DATA: Trigger the specific loading function for the new view
+  const loaders = {
+    'dashboard': loadDashboard,
+    'books':     loadBooks,
+    'borrowers': loadBorrowers,
+    'loans':     loadLoans
+  };
+  if (loaders[page]) loaders[page]();
 }
 
-/** Toggles the sidebar visibility on mobile devices */
+/** Toggles the sidebar visibility on mobile devices (Hamburger menu) */
 function toggleSidebar() {
   const sidebar = document.querySelector('.sidebar');
   if (sidebar) sidebar.classList.toggle('open');
 }
 
-// ── Modal helpers ────────────────────────────────────────────────────────────
+// ── MODAL HELPERS ────────────────────────────────────────────────────────────
+
+/** Shows a modal by adding the 'open' class */
 function openModal(id)  { document.getElementById(id).classList.add('open'); }
+
+/** Hides a modal by removing the 'open' class */
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
 
+/**
+ * Generic confirmation handler to replace native 'confirm()'.
+ * @param {string} title - Header text.
+ * @param {string} msg - Subtext/Warning.
+ * @param {Function} onConfirm - Callback if user clicks 'Proceed'.
+ */
+function showConfirm(title, msg, onConfirm) {
+  document.getElementById('confirm-title').textContent = title;
+  document.getElementById('confirm-msg').textContent   = msg;
+  
+  const proceedBtn = document.getElementById('confirm-proceed-btn');
+  // Use a clone to clear old event listeners from previous calls
+  const newBtn = proceedBtn.cloneNode(true);
+  proceedBtn.parentNode.replaceChild(newBtn, proceedBtn);
+  
+  newBtn.addEventListener('click', () => {
+    onConfirm();
+    closeModal('confirm-modal');
+  });
+  
+  openModal('confirm-modal');
+}
+
 // ════════════════════════════════════════════════════════════════════════════
-// DASHBOARD LOGIC
+// SECTION: DASHBOARD
 // ════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Fetches high-level statistics from the backend and updates the dashboard UI.
+ * Includes total counts for books, members, and active library activity.
+ */
 async function loadDashboard() {
   try {
-    // GET request to stats.php to get overview numbers
     const s = await ajax('stats.php');
     
-    // Update the stat cards in index.html
+    // Update numeric stat cards
     document.getElementById('stat-books').textContent     = s.totalBooks;
     document.getElementById('stat-avail').textContent     = s.availableCopies;
     document.getElementById('stat-borrowers').textContent = s.totalBorrowers;
@@ -99,25 +169,31 @@ async function loadDashboard() {
     document.getElementById('stat-overdue').textContent   = s.overdueLoans;
     document.getElementById('stat-returned').textContent  = s.returnedLoans;
 
-    // Build the "Books by Genre" list dynamically
+    // Build the "Books by Genre" List dynamically
     const genreEl = document.getElementById('genre-list');
     genreEl.innerHTML = Object.entries(s.genres)
-      .sort((a, b) => b[1] - a[1]) // Sort by count descending
+      .sort((a, b) => b[1] - a[1]) // Most popular genres first
       .map(([g, n]) => `
         <div style="display:flex;justify-content:space-between;align-items:center;
                     padding:8px 0;border-bottom:1px solid var(--border)">
           <span>${g}</span>
           <span class="badge badge-muted">${n} book${n !== 1 ? 's' : ''}</span>
         </div>`).join('');
-  } catch (e) { toast(e.message, 'error'); }
+  } catch (e) { 
+    toast(e.message, 'error'); 
+  }
 }
 
 // ════════════════════════════════════════════════════════════════════════════
-// BOOKS LOGIC (CRUD)
+// SECTION: BOOKS (CRUD Operations)
 // ════════════════════════════════════════════════════════════════════════════
-let editingBookId = null; // Tracks if we are currently editing an existing book
 
-/** Fetches books from the server and renders the table */
+let editingBookId = null; // Tracks if we are currently editing an existing record
+
+/**
+ * Fetches the book list from the server based on current search and filter settings.
+ * Renders the results into the books table.
+ */
 async function loadBooks() {
   const searchInput = document.getElementById('book-search');
   const genreFilter = document.getElementById('book-genre-filter');
@@ -129,21 +205,23 @@ async function loadBooks() {
   const avail  = availFilter.value;
   const tbody  = document.getElementById('books-tbody');
   
-  // Show loading state
-  tbody.innerHTML = '<tr><td colspan="7" class="loading">Loading…</td></tr>';
+  // Show loading indicator
+  tbody.innerHTML = '<tr><td colspan="8" class="loading">Searching...</td></tr>';
 
   try {
-    // GET request with search and filter parameters
     const books = await ajax('books.php', 'GET', null, { search, genre, available: avail });
     
     if (!books.length) {
-      tbody.innerHTML = '<tr><td colspan="7"><div class="empty-state"><div class="emoji">📚</div><p>No books found</p></div></td></tr>';
+      tbody.innerHTML = '<tr><td colspan="8"><div class="empty-state"><div class="emoji">📚</div><p>No books matching your criteria</p></div></td></tr>';
       return;
     }
 
-    // Map each book object into an HTML table row
+    // Map JSON results to HTML Table Rows
     tbody.innerHTML = books.map(b => {
+      // Dynamic availability styling
       const cls = b.available === 0 ? 'avail-none' : b.available <= 1 ? 'avail-low' : 'avail-good';
+      
+      // Thumbnail logic
       const cover = b.coverUrl 
         ? `<img src="${b.coverUrl}" class="book-cover-thumb" onerror="this.outerHTML='<div class=\'book-cover-placeholder\'>📚</div>'" />`
         : `<div class="book-cover-placeholder">📚</div>`;
@@ -164,10 +242,12 @@ async function loadBooks() {
         </td>
       </tr>`;
     }).join('');
-  } catch (e) { toast(e.message, 'error'); }
+  } catch (e) { 
+    toast(e.message, 'error'); 
+  }
 }
 
-/** Prepares the modal for a "New Book" entry */
+/** Resets the modal form and marks the state for Creating a new book record */
 function openAddBook() {
   editingBookId = null;
   document.getElementById('book-modal-title').textContent = 'Add New Book';
@@ -175,7 +255,7 @@ function openAddBook() {
   openModal('book-modal');
 }
 
-/** Fetches a single book's data to populate the edit form */
+/** Fetches a specific book's data and populates the modal form for Editing */
 async function editBook(id) {
   try {
     const b = await ajax(`books.php?id=${id}`);
@@ -189,10 +269,12 @@ async function editBook(id) {
     document.getElementById('f-copies').value   = b.copies;
     document.getElementById('f-coverUrl').value = b.coverUrl || '';
     openModal('book-modal');
-  } catch (e) { toast(e.message, 'error'); }
+  } catch (e) { 
+    toast(e.message, 'error'); 
+  }
 }
 
-/** Sends data to the server to Create or Update a book */
+/** Validates inputs and sends a POST (Create) or PUT (Update) request to the server */
 async function saveBook() {
   const data = {
     title:  document.getElementById('f-title').value.trim(),
@@ -203,50 +285,60 @@ async function saveBook() {
     copies:   document.getElementById('f-copies').value,
     coverUrl: document.getElementById('f-coverUrl').value.trim(),
   };
-  if (!data.title || !data.author) return toast('Title and author required', 'error');
+  
+  if (!data.title || !data.author) return toast('Title and author are required', 'error');
 
   try {
     if (editingBookId) {
-      // PUT request for updates
       await ajax(`books.php?id=${editingBookId}`, 'PUT', data);
-      toast('Book updated', 'success');
+      toast('Book updated successfully', 'success');
     } else {
-      // POST request for new entries
       await ajax('books.php', 'POST', data);
-      toast('Book added', 'success');
+      toast('New book added to catalogue', 'success');
     }
     closeModal('book-modal');
-    loadBooks(); // Refresh the list
-  } catch (e) { toast(e.message, 'error'); }
+    loadBooks(); 
+  } catch (e) { 
+    toast(e.message, 'error'); 
+  }
 }
 
-/** Sends a DELETE request to the server */
+/** Sends a DELETE request after user confirmation */
 async function deleteBook(id, title) {
-  if (!confirm(`Delete "${title}"?`)) return;
-  try {
-    await ajax(`books.php?id=${id}`, 'DELETE');
-    toast('Book deleted', 'success');
-    loadBooks();
-  } catch (e) { toast(e.message, 'error'); }
+  showConfirm(
+    'Delete Book?',
+    `Are you sure you want to delete "${title}"? This action cannot be undone.`,
+    async () => {
+      try {
+        await ajax(`books.php?id=${id}`, 'DELETE');
+        toast('Book record removed', 'success');
+        loadBooks();
+      } catch (e) { 
+        toast(e.message, 'error'); 
+      }
+    }
+  );
 }
 
 // ════════════════════════════════════════════════════════════════════════════
-// BORROWERS LOGIC
+// SECTION: BORROWERS
 // ════════════════════════════════════════════════════════════════════════════
+
 let editingBorrowerId = null;
 
+/** Fetches and renders the list of registered library members */
 async function loadBorrowers() {
   const searchInput = document.getElementById('borrower-search');
   if (!searchInput) return;
 
   const search = searchInput.value;
   const tbody  = document.getElementById('borrowers-tbody');
-  tbody.innerHTML = '<tr><td colspan="6" class="loading">Loading…</td></tr>';
+  tbody.innerHTML = '<tr><td colspan="6" class="loading">Loading members...</td></tr>';
 
   try {
     const list = await ajax('borrowers.php', 'GET', null, { search });
     if (!list.length) {
-      tbody.innerHTML = '<tr><td colspan="6"><div class="empty-state"><div class="emoji">👥</div><p>No borrowers found</p></div></td></tr>';
+      tbody.innerHTML = '<tr><td colspan="6"><div class="empty-state"><div class="emoji">👥</div><p>No members found</p></div></td></tr>';
       return;
     }
     tbody.innerHTML = list.map(b => `<tr>
@@ -258,13 +350,16 @@ async function loadBorrowers() {
       <td>
         <div class="actions">
           <button class="btn btn-ghost btn-sm" onclick="editBorrower(${b.id})">Edit</button>
-          <button class="btn btn-danger btn-sm" onclick="deleteBorrower(${b.id},'${esc(b.name)}')">Delete</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteBorrower(${b.id},'${esc(b.name)}')">Remove</button>
         </div>
       </td>
     </tr>`).join('');
-  } catch (e) { toast(e.message, 'error'); }
+  } catch (e) { 
+    toast(e.message, 'error'); 
+  }
 }
 
+/** Resets the member registration form */
 function openAddBorrower() {
   editingBorrowerId = null;
   document.getElementById('borrower-modal-title').textContent = 'Register Borrower';
@@ -272,6 +367,7 @@ function openAddBorrower() {
   openModal('borrower-modal');
 }
 
+/** Populates the form for editing an existing member */
 async function editBorrower(id) {
   try {
     const b = await ajax(`borrowers.php?id=${id}`);
@@ -282,9 +378,12 @@ async function editBorrower(id) {
     document.getElementById('fb-phone').value  = b.phone;
     document.getElementById('fb-status').value = b.status;
     openModal('borrower-modal');
-  } catch (e) { toast(e.message, 'error'); }
+  } catch (e) { 
+    toast(e.message, 'error'); 
+  }
 }
 
+/** Handles Creating or Updating a borrower account */
 async function saveBorrower() {
   const data = {
     name:   document.getElementById('fb-name').value.trim(),
@@ -292,51 +391,66 @@ async function saveBorrower() {
     phone:  document.getElementById('fb-phone').value.trim(),
     status: document.getElementById('fb-status').value,
   };
-  if (!data.name || !data.email) return toast('Name and email required', 'error');
+  if (!data.name || !data.email) return toast('Name and email are required', 'error');
 
   try {
     if (editingBorrowerId) {
       await ajax(`borrowers.php?id=${editingBorrowerId}`, 'PUT', data);
-      toast('Borrower updated', 'success');
+      toast('Borrower profile updated', 'success');
     } else {
       await ajax('borrowers.php', 'POST', data);
-      toast('Borrower registered', 'success');
+      toast('Borrower registered successfully', 'success');
     }
     closeModal('borrower-modal');
     loadBorrowers();
-  } catch (e) { toast(e.message, 'error'); }
+  } catch (e) { 
+    toast(e.message, 'error'); 
+  }
 }
 
+/** Deletes a borrower record from the system */
 async function deleteBorrower(id, name) {
-  if (!confirm(`Remove borrower "${name}"?`)) return;
-  try {
-    await ajax(`borrowers.php?id=${id}`, 'DELETE');
-    toast('Borrower removed', 'success');
-    loadBorrowers();
-  } catch (e) { toast(e.message, 'error'); }
+  showConfirm(
+    'Remove Borrower?',
+    `Remove registration for "${name}"? This is only possible if they have no active loans.`,
+    async () => {
+      try {
+        await ajax(`borrowers.php?id=${id}`, 'DELETE');
+        toast('Borrower removed from registry', 'success');
+        loadBorrowers();
+      } catch (e) { 
+        toast(e.message, 'error'); 
+      }
+    }
+  );
 }
 
 // ════════════════════════════════════════════════════════════════════════════
-// LOANS LOGIC
+// SECTION: LOANS & CIRCULATION
 // ════════════════════════════════════════════════════════════════════════════
+
+/** Fetches and renders the current library circulation (loans) */
 async function loadLoans() {
   const filter = document.getElementById('loan-status-filter');
   if (!filter) return;
 
   const status = filter.value;
   const tbody  = document.getElementById('loans-tbody');
-  tbody.innerHTML = '<tr><td colspan="7" class="loading">Loading…</td></tr>';
+  tbody.innerHTML = '<tr><td colspan="7" class="loading">Fetching loan status...</td></tr>';
 
   try {
     const loans = await ajax('loans.php', 'GET', null, { status });
     if (!loans.length) {
-      tbody.innerHTML = '<tr><td colspan="7"><div class="empty-state"><div class="emoji">📋</div><p>No loans found</p></div></td></tr>';
+      tbody.innerHTML = '<tr><td colspan="7"><div class="empty-state"><div class="emoji">📋</div><p>No loan records found for this category</p></div></td></tr>';
       return;
     }
+    
     tbody.innerHTML = loans.map(l => {
+      // Logic for status badges and conditional "Return" button
       const badgeCls = l.status === 'returned' ? 'badge-muted' : l.status === 'overdue' ? 'badge-danger' : 'badge-success';
       const returnBtn = l.status !== 'returned'
         ? `<button class="btn btn-success btn-sm" onclick="returnBook(${l.id})">Return</button>` : '';
+      
       return `<tr>
         <td><strong>${esc(l.bookTitle)}</strong></td>
         <td>${esc(l.borrowerName)}</td>
@@ -352,12 +466,15 @@ async function loadLoans() {
         </td>
       </tr>`;
     }).join('');
-  } catch (e) { toast(e.message, 'error'); }
+  } catch (e) { 
+    toast(e.message, 'error'); 
+  }
 }
 
-/** Populates the book and borrower dropdowns when checking out a book */
+/** Fetches available books and active borrowers to populate the Checkout Modal */
 async function openBorrowModal() {
   try {
+    // We only want books that have > 0 copies and borrowers who are 'active'
     const books     = await ajax('books.php', 'GET', null, { available: '1' });
     const borrowers = await ajax('borrowers.php', 'GET', null, { status: 'active' });
 
@@ -370,60 +487,93 @@ async function openBorrowModal() {
       borrowers.map(b => `<option value="${b.id}">${esc(b.name)}</option>`).join('');
 
     openModal('loan-modal');
-  } catch (e) { toast(e.message, 'error'); }
+  } catch (e) { 
+    toast(e.message, 'error'); 
+  }
 }
 
+/** Creates a new loan record and decreases book availability */
 async function saveLoan() {
   const bookId     = document.getElementById('fl-book').value;
   const borrowerId = document.getElementById('fl-borrower').value;
-  if (!bookId || !borrowerId) return toast('Select book and borrower', 'error');
+  if (!bookId || !borrowerId) return toast('Please select both a book and a borrower', 'error');
 
   try {
     await ajax('loans.php', 'POST', { bookId: +bookId, borrowerId: +borrowerId });
-    toast('Book checked out (due in 14 days)', 'success');
+    toast('Book checked out (Due in 14 days)', 'success');
     closeModal('loan-modal');
     loadLoans();
-  } catch (e) { toast(e.message, 'error'); }
+  } catch (e) { 
+    toast(e.message, 'error'); 
+  }
 }
 
+/** Marks a book as returned and increases book availability */
 async function returnBook(id) {
-  if (!confirm('Mark this book as returned?')) return;
-  try {
-    await ajax(`loans.php?id=${id}`, 'PUT');
-    toast('Book returned successfully', 'success');
-    loadLoans();
-  } catch (e) { toast(e.message, 'error'); }
+  showConfirm(
+    'Confirm Return?',
+    'Mark this book copy as returned to the library?',
+    async () => {
+      try {
+        await ajax(`loans.php?id=${id}`, 'PUT');
+        toast('Book returned successfully', 'success');
+        loadLoans();
+      } catch (e) { 
+        toast(e.message, 'error'); 
+      }
+    }
+  );
 }
 
+/** Forcefully removes a loan record (admin only action) */
 async function deleteLoan(id) {
-  if (!confirm('Delete this loan record?')) return;
-  try {
-    await ajax(`loans.php?id=${id}`, 'DELETE');
-    toast('Loan record deleted', 'success');
-    loadLoans();
-  } catch (e) { toast(e.message, 'error'); }
+  showConfirm(
+    'Delete Loan Record?',
+    'Are you sure you want to delete this historical record? This cannot be undone.',
+    async () => {
+      try {
+        await ajax(`loans.php?id=${id}`, 'DELETE');
+        toast('Loan record deleted', 'success');
+        loadLoans();
+      } catch (e) { 
+        toast(e.message, 'error'); 
+      }
+    }
+  );
 }
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
-/** Escape HTML special characters to prevent XSS attacks */
+// ── HELPERS ──────────────────────────────────────────────────────────────────
+
+/**
+ * Escapes HTML special characters to prevent Cross-Site Scripting (XSS).
+ * 
+ * @param {string} str - The raw string.
+ * @returns {string} - The sanitized string.
+ */
 function esc(str) {
   if (!str) return '';
-  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  return String(str)
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;')
+    .replace(/'/g,'&#039;');
 }
 
-// ── Boot ─────────────────────────────────────────────────────────────────────
-/** This code runs as soon as the HTML has fully loaded */
+// ── BOOTSTRAP (App Initialization) ──────────────────────────────────────────
+
+/** This listener handles the initial page setup once the DOM is ready */
 document.addEventListener('DOMContentLoaded', () => {
-  // Bind click events to Sidebar navigation items
+  // 1. Sidebar Navigation: Bind click events to all nav buttons
   document.querySelectorAll('.nav-item').forEach(n => {
     n.addEventListener('click', () => navigate(n.dataset.page));
   });
 
-  // Mobile sidebar toggle button
+  // 2. Mobile Logic: Bind toggle button
   const toggleBtn = document.getElementById('sidebar-toggle');
   if (toggleBtn) toggleBtn.addEventListener('click', toggleSidebar);
 
-  // Close sidebar when clicking outside on mobile
+  // 3. Mobile Logic: Close sidebar when clicking outside on small screens
   document.addEventListener('click', e => {
     const sidebar = document.querySelector('.sidebar');
     const toggle = document.getElementById('sidebar-toggle');
@@ -435,29 +585,34 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // Debounced search: Wait 300ms after user stops typing before sending API request
+  // 4. Search Logic: Debounced search for Books and Borrowers
+  // Wait 300ms after the last keystroke before sending API request to save server resources.
   let searchTimer;
+  
   const bookSearch = document.getElementById('book-search');
   if (bookSearch) {
     bookSearch.addEventListener('input', () => {
-      clearTimeout(searchTimer); searchTimer = setTimeout(loadBooks, 300);
+      clearTimeout(searchTimer); 
+      searchTimer = setTimeout(loadBooks, 300);
     });
   }
   
   const borrowerSearch = document.getElementById('borrower-search');
   if (borrowerSearch) {
     borrowerSearch.addEventListener('input', () => {
-      clearTimeout(searchTimer); searchTimer = setTimeout(loadBorrowers, 300);
+      clearTimeout(searchTimer); 
+      searchTimer = setTimeout(loadBorrowers, 300);
     });
   }
 
-  // Close modals when clicking the dark background overlay
+  // 5. Modal Logic: Dynamic backdrop close
   document.querySelectorAll('.modal-overlay').forEach(overlay => {
     overlay.addEventListener('click', e => {
       if (e.target === overlay) overlay.classList.remove('open');
     });
   });
 
-  // Start at the dashboard
+  // 6. Start: Navigate to the default dashboard view
   navigate('dashboard');
 });
+
