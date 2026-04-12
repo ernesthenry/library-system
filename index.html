@@ -1,3 +1,13 @@
+<!-- 
+  Library Management System - Main Entry Point (HTML)
+  
+  STRUCTURE OVERVIEW:
+  - Sidebar: Handles navigation between different "pages".
+  - Main Component: Contains several <section> elements. Only one is visible at a time (SPA style).
+  - Modals: Hidden overlays used for adding/editing data without leaving the page.
+  - Scripts: Connects to 'app.js' which handles all the interactive logic and API calls.
+-->
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -8,10 +18,18 @@
 </head>
 <body>
 
+<!-- ── Mobile Header ────────────────────────────────────────────────────────── -->
+<!-- Visible only on small screens; contains the hamburger menu toggle -->
+<header class="mobile-header">
+  <div class="mobile-logo">📖 LibraryMS</div>
+  <button id="sidebar-toggle" class="hamburger">☰</button>
+</header>
+
 <!-- ── Sidebar ────────────────────────────────────────────────────────────── -->
+<!-- Static navigation menu. Clicks here trigger the 'navigate()' function in app.js -->
 <aside class="sidebar">
   <div class="sidebar-logo">
-    <h1>📖 LibraryMS</h1>
+    <h1>📖 <span class="logo-text">LibraryMS</span></h1>
     <p>Management System</p>
   </div>
   <nav class="nav">
@@ -32,9 +50,10 @@
 </aside>
 
 <!-- ── Main ───────────────────────────────────────────────────────────────── -->
+<!-- This container holds all the different views. Logic in app.js toggles the 'active' class -->
 <main class="main">
 
-  <!-- DASHBOARD -->
+  <!-- DASHBOARD PAGE: Shows high-level statistics -->
   <section id="page-dashboard" class="page">
     <div class="page-header">
       <h2>Dashboard</h2>
@@ -42,6 +61,7 @@
     </div>
 
     <div class="stats-grid">
+      <!-- Stat cards are populated dynamically by loadDashboard() in app.js -->
       <div class="stat-card gold">
         <div class="stat-icon">📚</div>
         <div class="stat-value" id="stat-books">—</div>
@@ -80,7 +100,7 @@
     </div>
   </section>
 
-  <!-- BOOKS -->
+  <!-- BOOKS PAGE: The main catalog with search and filters -->
   <section id="page-books" class="page">
     <div class="page-header">
       <h2>Books Catalogue</h2>
@@ -88,6 +108,7 @@
     </div>
 
     <div class="toolbar">
+      <!-- Search and filters trigger loadBooks() whenever they change -->
       <input id="book-search" class="search-box" type="text" placeholder="Search by title, author, ISBN…" />
       <select id="book-genre-filter" class="filter" onchange="loadBooks()">
         <option value="">All Genres</option>
@@ -114,6 +135,7 @@
             <th>Genre</th><th>Year</th><th>Availability</th><th>Actions</th>
           </tr>
         </thead>
+        <!-- Table body is filled by loadBooks() in app.js -->
         <tbody id="books-tbody">
           <tr><td colspan="8" class="loading">Loading…</td></tr>
         </tbody>
@@ -121,7 +143,7 @@
     </div>
   </section>
 
-  <!-- BORROWERS -->
+  <!-- BORROWERS PAGE -->
   <section id="page-borrowers" class="page">
     <div class="page-header">
       <h2>Borrowers</h2>
@@ -148,7 +170,7 @@
     </div>
   </section>
 
-  <!-- LOANS -->
+  <!-- LOANS PAGE: Tracking who has which book -->
   <section id="page-loans" class="page">
     <div class="page-header">
       <h2>Loans</h2>
@@ -183,8 +205,9 @@
 </main>
 
 <!-- ── Modals ──────────────────────────────────────────────────────────────── -->
+<!-- These are hidden by default and shown via CSS when the 'open' class is added -->
 
-<!-- Book Modal -->
+<!-- Book Modal: Used for both Adding and Editing books -->
 <div id="book-modal" class="modal-overlay">
   <div class="modal">
     <h3 id="book-modal-title">Add New Book</h3>
@@ -287,9 +310,10 @@
   </div>
 </div>
 
-<!-- Toasts -->
+<!-- Toasts: Container for pop-up notifications -->
 <div id="toastContainer" class="toast-container"></div>
 
+<!-- MAIN LOGIC: Interaction, AJAX calls, and UI routing -->
 <script src="assets/js/app.js"></script>
 </body>
 </html>

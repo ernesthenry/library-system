@@ -1,9 +1,24 @@
-// Library Management System AJAX Logic
+// Library Management System - Frontend Logic (JavaScript)
+/**
+ * ARCHITECTURE OVERVIEW:
+ * This script acts as the "Controller". It:
+ * 1. Listens for user events (clicks, searches).
+ * 2. Communicates with the PHP backend via the Fetch API (AJAX).
+ * 3. Receives JSON data and dynamically updates the HTML (DOM manipulation).
+ */
 
-const API = 'api';
+const API = 'api'; // Base directory for our PHP backend files
 
 // ── Utility: AJAX wrapper ────────────────────────────────────────────────────
+/**
+ * A central helper function to handle all HTTP requests.
+ * @param {string} endpoint - The PHP file name (e.g., 'books.php').
+ * @param {string} method - GET, POST, PUT, or DELETE.
+ * @param {object} body - Data to send to the server (for POST/PUT).
+ * @param {object} params - Query parameters (for GET).
+ */
 async function ajax(endpoint, method = 'GET', body = null, params = {}) {
+  // Construct the URL with query parameters if provided
   const url = new URL(`${API}/${endpoint}`, window.location.href);
   Object.entries(params).forEach(([k, v]) => { if (v !== '') url.searchParams.set(k, v); });
 
@@ -11,35 +26,57 @@ async function ajax(endpoint, method = 'GET', body = null, params = {}) {
     method,
     headers: { 'Content-Type': 'application/json' },
   };
+  
+  // If we are sending data, stringify it into JSON
   if (body) opts.body = JSON.stringify(body);
 
+  // Send the request using the native Fetch API
   const res  = await fetch(url, opts);
-  const data = await res.json();
+  const data = await res.json(); // The server always responds with JSON
+  
+  // Check if the server returned an error (e.g., 404 or 500)
   if (!res.ok) throw new Error(data.error || 'Request failed');
   return data;
 }
 
 // ── Toast notifications ──────────────────────────────────────────────────────
+/** High-level feedback for the user (Success/Error messages) */
 function toast(msg, type = 'info') {
   const icons = { success: '✅', error: '❌', info: 'ℹ️' };
   const el = document.createElement('div');
   el.className = `toast ${type}`;
   el.innerHTML = `<span>${icons[type]}</span><span>${msg}</span>`;
   document.getElementById('toastContainer').appendChild(el);
-  setTimeout(() => el.remove(), 3500);
+  setTimeout(() => el.remove(), 3500); // Auto-hide after 3.5 seconds
 }
 
 // ── Navigation ───────────────────────────────────────────────────────────────
+/** Handles switching between different pages without refreshing the browser */
 function navigate(page) {
+  // Hide all pages and deactivate all nav items
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  
+  // Show the requested page
   document.getElementById(`page-${page}`).classList.add('active');
-  document.querySelector(`.nav-item[data-page="${page}"]`).classList.add('active');
+  const navItem = document.querySelector(`.nav-item[data-page="${page}"]`);
+  if (navItem) navItem.classList.add('active');
 
+  // Close sidebar on navigate (important for mobile UX)
+  const sidebar = document.querySelector('.sidebar');
+  if (sidebar) sidebar.classList.remove('open');
+
+  // Trigger data loading for the specific page
   if (page === 'dashboard') loadDashboard();
   if (page === 'books')     loadBooks();
   if (page === 'borrowers') loadBorrowers();
   if (page === 'loans')     loadLoans();
+}
+
+/** Toggles the sidebar visibility on mobile devices */
+function toggleSidebar() {
+  const sidebar = document.querySelector('.sidebar');
+  if (sidebar) sidebar.classList.toggle('open');
 }
 
 // ── Modal helpers ────────────────────────────────────────────────────────────
@@ -47,11 +84,14 @@ function openModal(id)  { document.getElementById(id).classList.add('open'); }
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
 
 // ════════════════════════════════════════════════════════════════════════════
-// DASHBOARD
+// DASHBOARD LOGIC
 // ════════════════════════════════════════════════════════════════════════════
 async function loadDashboard() {
   try {
+    // GET request to stats.php to get overview numbers
     const s = await ajax('stats.php');
+    
+    // Update the stat cards in index.html
     document.getElementById('stat-books').textContent     = s.totalBooks;
     document.getElementById('stat-avail').textContent     = s.availableCopies;
     document.getElementById('stat-borrowers').textContent = s.totalBorrowers;
@@ -59,10 +99,10 @@ async function loadDashboard() {
     document.getElementById('stat-overdue').textContent   = s.overdueLoans;
     document.getElementById('stat-returned').textContent  = s.returnedLoans;
 
-    // Genre list
+    // Build the "Books by Genre" list dynamically
     const genreEl = document.getElementById('genre-list');
     genreEl.innerHTML = Object.entries(s.genres)
-      .sort((a, b) => b[1] - a[1])
+      .sort((a, b) => b[1] - a[1]) // Sort by count descending
       .map(([g, n]) => `
         <div style="display:flex;justify-content:space-between;align-items:center;
                     padding:8px 0;border-bottom:1px solid var(--border)">
@@ -73,23 +113,35 @@ async function loadDashboard() {
 }
 
 // ════════════════════════════════════════════════════════════════════════════
-// BOOKS
+// BOOKS LOGIC (CRUD)
 // ════════════════════════════════════════════════════════════════════════════
-let editingBookId = null;
+let editingBookId = null; // Tracks if we are currently editing an existing book
 
+/** Fetches books from the server and renders the table */
 async function loadBooks() {
-  const search = document.getElementById('book-search').value;
-  const genre  = document.getElementById('book-genre-filter').value;
-  const avail  = document.getElementById('book-avail-filter').value;
+  const searchInput = document.getElementById('book-search');
+  const genreFilter = document.getElementById('book-genre-filter');
+  const availFilter = document.getElementById('book-avail-filter');
+  if (!searchInput) return;
+
+  const search = searchInput.value;
+  const genre  = genreFilter.value;
+  const avail  = availFilter.value;
   const tbody  = document.getElementById('books-tbody');
+  
+  // Show loading state
   tbody.innerHTML = '<tr><td colspan="7" class="loading">Loading…</td></tr>';
 
   try {
+    // GET request with search and filter parameters
     const books = await ajax('books.php', 'GET', null, { search, genre, available: avail });
+    
     if (!books.length) {
       tbody.innerHTML = '<tr><td colspan="7"><div class="empty-state"><div class="emoji">📚</div><p>No books found</p></div></td></tr>';
       return;
     }
+
+    // Map each book object into an HTML table row
     tbody.innerHTML = books.map(b => {
       const cls = b.available === 0 ? 'avail-none' : b.available <= 1 ? 'avail-low' : 'avail-good';
       const cover = b.coverUrl 
@@ -115,6 +167,7 @@ async function loadBooks() {
   } catch (e) { toast(e.message, 'error'); }
 }
 
+/** Prepares the modal for a "New Book" entry */
 function openAddBook() {
   editingBookId = null;
   document.getElementById('book-modal-title').textContent = 'Add New Book';
@@ -122,6 +175,7 @@ function openAddBook() {
   openModal('book-modal');
 }
 
+/** Fetches a single book's data to populate the edit form */
 async function editBook(id) {
   try {
     const b = await ajax(`books.php?id=${id}`);
@@ -138,6 +192,7 @@ async function editBook(id) {
   } catch (e) { toast(e.message, 'error'); }
 }
 
+/** Sends data to the server to Create or Update a book */
 async function saveBook() {
   const data = {
     title:  document.getElementById('f-title').value.trim(),
@@ -152,17 +207,20 @@ async function saveBook() {
 
   try {
     if (editingBookId) {
+      // PUT request for updates
       await ajax(`books.php?id=${editingBookId}`, 'PUT', data);
       toast('Book updated', 'success');
     } else {
+      // POST request for new entries
       await ajax('books.php', 'POST', data);
       toast('Book added', 'success');
     }
     closeModal('book-modal');
-    loadBooks();
+    loadBooks(); // Refresh the list
   } catch (e) { toast(e.message, 'error'); }
 }
 
+/** Sends a DELETE request to the server */
 async function deleteBook(id, title) {
   if (!confirm(`Delete "${title}"?`)) return;
   try {
@@ -173,12 +231,15 @@ async function deleteBook(id, title) {
 }
 
 // ════════════════════════════════════════════════════════════════════════════
-// BORROWERS
+// BORROWERS LOGIC
 // ════════════════════════════════════════════════════════════════════════════
 let editingBorrowerId = null;
 
 async function loadBorrowers() {
-  const search = document.getElementById('borrower-search').value;
+  const searchInput = document.getElementById('borrower-search');
+  if (!searchInput) return;
+
+  const search = searchInput.value;
   const tbody  = document.getElementById('borrowers-tbody');
   tbody.innerHTML = '<tr><td colspan="6" class="loading">Loading…</td></tr>';
 
@@ -256,10 +317,13 @@ async function deleteBorrower(id, name) {
 }
 
 // ════════════════════════════════════════════════════════════════════════════
-// LOANS
+// LOANS LOGIC
 // ════════════════════════════════════════════════════════════════════════════
 async function loadLoans() {
-  const status = document.getElementById('loan-status-filter').value;
+  const filter = document.getElementById('loan-status-filter');
+  if (!filter) return;
+
+  const status = filter.value;
   const tbody  = document.getElementById('loans-tbody');
   tbody.innerHTML = '<tr><td colspan="7" class="loading">Loading…</td></tr>';
 
@@ -291,20 +355,22 @@ async function loadLoans() {
   } catch (e) { toast(e.message, 'error'); }
 }
 
+/** Populates the book and borrower dropdowns when checking out a book */
 async function openBorrowModal() {
-  // Populate book dropdown
-  const books     = await ajax('books.php', 'GET', null, { available: '1' });
-  const borrowers = await ajax('borrowers.php', 'GET', null, { status: 'active' });
+  try {
+    const books     = await ajax('books.php', 'GET', null, { available: '1' });
+    const borrowers = await ajax('borrowers.php', 'GET', null, { status: 'active' });
 
-  document.getElementById('fl-book').innerHTML =
-    `<option value="">— Select Book —</option>` +
-    books.map(b => `<option value="${b.id}">${esc(b.title)} (${b.available} avail.)</option>`).join('');
+    document.getElementById('fl-book').innerHTML =
+      `<option value="">— Select Book —</option>` +
+      books.map(b => `<option value="${b.id}">${esc(b.title)} (${b.available} avail.)</option>`).join('');
 
-  document.getElementById('fl-borrower').innerHTML =
-    `<option value="">— Select Borrower —</option>` +
-    borrowers.map(b => `<option value="${b.id}">${esc(b.name)}</option>`).join('');
+    document.getElementById('fl-borrower').innerHTML =
+      `<option value="">— Select Borrower —</option>` +
+      borrowers.map(b => `<option value="${b.id}">${esc(b.name)}</option>`).join('');
 
-  openModal('loan-modal');
+    openModal('loan-modal');
+  } catch (e) { toast(e.message, 'error'); }
 }
 
 async function saveLoan() {
@@ -339,33 +405,59 @@ async function deleteLoan(id) {
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
+/** Escape HTML special characters to prevent XSS attacks */
 function esc(str) {
   if (!str) return '';
   return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
 // ── Boot ─────────────────────────────────────────────────────────────────────
+/** This code runs as soon as the HTML has fully loaded */
 document.addEventListener('DOMContentLoaded', () => {
-  // Nav clicks
+  // Bind click events to Sidebar navigation items
   document.querySelectorAll('.nav-item').forEach(n => {
     n.addEventListener('click', () => navigate(n.dataset.page));
   });
 
-  // Debounced search
-  let searchTimer;
-  document.getElementById('book-search').addEventListener('input', () => {
-    clearTimeout(searchTimer); searchTimer = setTimeout(loadBooks, 300);
-  });
-  document.getElementById('borrower-search').addEventListener('input', () => {
-    clearTimeout(searchTimer); searchTimer = setTimeout(loadBorrowers, 300);
+  // Mobile sidebar toggle button
+  const toggleBtn = document.getElementById('sidebar-toggle');
+  if (toggleBtn) toggleBtn.addEventListener('click', toggleSidebar);
+
+  // Close sidebar when clicking outside on mobile
+  document.addEventListener('click', e => {
+    const sidebar = document.querySelector('.sidebar');
+    const toggle = document.getElementById('sidebar-toggle');
+    if (sidebar && toggle && window.innerWidth <= 992 && 
+        sidebar.classList.contains('open') && 
+        !sidebar.contains(e.target) && 
+        !toggle.contains(e.target)) {
+      sidebar.classList.remove('open');
+    }
   });
 
-  // Close modals on overlay click
+  // Debounced search: Wait 300ms after user stops typing before sending API request
+  let searchTimer;
+  const bookSearch = document.getElementById('book-search');
+  if (bookSearch) {
+    bookSearch.addEventListener('input', () => {
+      clearTimeout(searchTimer); searchTimer = setTimeout(loadBooks, 300);
+    });
+  }
+  
+  const borrowerSearch = document.getElementById('borrower-search');
+  if (borrowerSearch) {
+    borrowerSearch.addEventListener('input', () => {
+      clearTimeout(searchTimer); searchTimer = setTimeout(loadBorrowers, 300);
+    });
+  }
+
+  // Close modals when clicking the dark background overlay
   document.querySelectorAll('.modal-overlay').forEach(overlay => {
     overlay.addEventListener('click', e => {
       if (e.target === overlay) overlay.classList.remove('open');
     });
   });
 
+  // Start at the dashboard
   navigate('dashboard');
 });

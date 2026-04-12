@@ -26,6 +26,35 @@ body {
   min-height: 100vh;
   display: flex;
   overflow-x: hidden;
+  position: relative;
+}
+
+/* ── Mobile Header ── */
+.mobile-header {
+  display: none;
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: 60px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 0 20px;
+  align-items: center;
+  justify-content: space-between;
+  z-index: 200;
+}
+.mobile-logo {
+  font-family: 'Playfair Display', serif;
+  font-weight: 700;
+  color: var(--accent);
+  font-size: 1.1rem;
+}
+.hamburger {
+  background: none;
+  border: none;
+  color: var(--text);
+  font-size: 1.5rem;
+  cursor: pointer;
+  padding: 5px;
 }
 
 /* ── Sidebar ── */
@@ -38,7 +67,8 @@ body {
   flex-direction: column;
   position: fixed;
   top: 0; left: 0; bottom: 0;
-  z-index: 100;
+  z-index: 1000;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .sidebar-logo {
@@ -192,7 +222,8 @@ select.filter {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  overflow: hidden;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 table { width: 100%; border-collapse: collapse; }
 thead th {
@@ -233,11 +264,13 @@ tbody td { padding: 12px 16px; font-size: 0.88rem; }
 /* ── Modal ── */
 .modal-overlay {
   display: none;
-  position: fixed; inset: 0;
+  position: fixed; 
+  top: 0; left: 0; right: 0; bottom: 0;
   background: rgba(0,0,0,0.7);
-  z-index: 1000;
+  z-index: 2000;
   align-items: center; justify-content: center;
   backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
 }
 .modal-overlay.open { display: flex; }
 .modal {
@@ -352,8 +385,26 @@ tbody td { padding: 12px 16px; font-size: 0.88rem; }
 }
 
 /* Responsive */
-@media (max-width: 768px) {
-  .sidebar { width: 60px; }
-  .sidebar-logo p, .nav-item span { display: none; }
-  .main { margin-left: 60px; padding: 20px; }
+@media (max-width: 992px) {
+  .sidebar {
+    transform: translateX(-100%);
+    box-shadow: 20px 0 50px rgba(0,0,0,0.5);
+  }
+  .sidebar.open {
+    transform: translateX(0);
+  }
+  .mobile-header { display: flex; }
+  .main {
+    margin-left: 0;
+    padding: 80px 20px 20px;
+  }
+  .logo-text { display: none; }
+}
+
+@media (max-width: 480px) {
+  .page-header h2 { font-size: 1.5rem; }
+  .stats-grid { grid-template-columns: 1fr; }
+  .modal { padding: 20px; margin: 10px; width: calc(100% - 20px); }
+  .toolbar { flex-direction: column; align-items: stretch; }
+  .search-box { width: 100%; }
 }
